@@ -185,6 +185,11 @@ void CIO::startInt()
   digitalWrite(PIN_LED,    HIGH);
 }
 
+void CIO::processInt()
+{
+  // No hardware specific processing needed
+}
+
 void CIO::interrupt()
 {
   if ((ADC->ADC_ISR & ADC_ISR_EOC_Chan) == ADC_ISR_EOC_Chan) {    // Ensure there was an End-of-Conversion and we read the ISR reg

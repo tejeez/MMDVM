@@ -340,6 +340,11 @@ void CIO::startInt()
    GPIO_SetBits(PORT_LED, PIN_LED);
 }
 
+void CIO::processInt()
+{
+  // No hardware specific processing needed
+}
+
 void CIO::interrupt()
 {
    TSample sample = {DC_OFFSET, MARK_NONE};

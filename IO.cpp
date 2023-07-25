@@ -1,4 +1,5 @@
 /*
+ *   Copyright (C) 2023 by Tatu Peltola OH2EAT
  *   Copyright (C) 2015,2016,2017,2018,2020,2021 by Jonathan Naylor G4KLX
  *   Copyright (C) 2015 by Jim Mclaughlin KI6ZUM
  *   Copyright (C) 2016 by Colin Durbridge G4EML
@@ -334,6 +335,7 @@ void CIO::start()
 
 void CIO::process()
 {
+  processInt();
   m_ledCount++;
   if (m_started) {
     // Two seconds timeout

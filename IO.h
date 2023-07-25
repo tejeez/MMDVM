@@ -1,4 +1,5 @@
 /*
+ *   Copyright (C) 2023 by Tatu Peltola OH2EAT
  *   Copyright (C) 2015,2016,2017,2018,2020,2021 by Jonathan Naylor G4KLX
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -146,6 +147,7 @@ private:
   // Hardware specific routines
   void initInt();
   void startInt();
+  void processInt();
 
   bool getCOSInt();
 
@@ -163,6 +165,9 @@ private:
   void setFMInt(bool on);
   
   void delayInt(unsigned int dly);
+
+#if defined(LINUX)
+#endif
 };
 
 #endif

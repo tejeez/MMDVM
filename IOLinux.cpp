@@ -25,6 +25,8 @@
 #include "Debug.h"
 #include "IO.h"
 
+#include <SoapySDR/Device.hpp>
+
 void CIO::initInt()
 {
     LOGCONSOLE("Initializing I/O");
@@ -33,6 +35,11 @@ void CIO::initInt()
 void CIO::startInt()
 {
     LOGCONSOLE("Starting I/O");
+}
+
+void CIO::processInt()
+{
+    // TODO
 }
 
 bool CIO::getCOSInt()

@@ -162,6 +162,11 @@ void CIO::startInt()
   digitalWrite(PIN_LED,    HIGH);
 }
 
+void CIO::processInt()
+{
+  // No hardware specific processing needed
+}
+
 void CIO::interrupt()
 {
    TSample sample = {DC_OFFSET, MARK_NONE};
