@@ -1,4 +1,6 @@
 /*
+ *   Copyright (C) 2023 by Tatu Peltola OH2EAT
+ *   Copyright (C) 2019 by Patrick Maier DK5MP
  *   Copyright (C) 2015,2016,2017,2018,2020,2021 by Jonathan Naylor G4KLX
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -108,6 +110,9 @@ private:
   int       m_lastSerialAvail;
   uint16_t  m_lastSerialAvailCount;
   CRingBuffer<uint8_t> m_i2CData;
+#if defined(LINUX)
+ int m_serial_fd;
+#endif
 
   void    sendACK(uint8_t type);
   void    sendNAK(uint8_t type, uint8_t err);

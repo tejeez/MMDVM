@@ -1,5 +1,6 @@
 /*
- *   Copyright (C) 2015,2016,2017,2021 by Jonathan Naylor G4KLX
+ *   Copyright (C) 2023 by Tatu Peltola OH2EAT
+ *   Copyright (C) 2019 by Patrick Maier DK5MP
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,20 +17,25 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#if !defined(DEBUG_H)
-#define  DEBUG_H
+#if defined(LINUX)
 
-#include "Config.h"
-#include "Globals.h"
+#include <time.h>
+#include <sys/time.h>
+#include <cstdarg>
+#include <cstdio>
 
-#define  DEBUG1(a)          serial.writeDebug((a))
-#define  DEBUG2(a,b)        serial.writeDebug((a),(b))
-#define  DEBUG3(a,b,c)      serial.writeDebug((a),(b),(c))
-#define  DEBUG4(a,b,c,d)    serial.writeDebug((a),(b),(c),(d))
-#define  DEBUG5(a,b,c,d,e)  serial.writeDebug((a),(b),(c),(d),(e))
-#define  DEBUG_DUMP(a,b)    serial.writeDebugDump((a),(b))
+#include "Debug.h"
 
-void LOGCONSOLE(const char* msg, ...);
+void LOGCONSOLE(const char* msg, ...)
+{
+    va_list args;
+    va_start(args, msg);
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    struct tm* tm = gmtime(&now.tv_sec);
+    printf("%04d-%02d-%02d %02d:%02d:%02d.%03lu ", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, now.tv_usec / 1000U);
+    vprintf(msg, args);
+    printf("\n");
+}
 
 #endif
-
