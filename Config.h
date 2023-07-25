@@ -104,8 +104,10 @@
 // Pass RSSI information to the host
 #define SEND_RSSI_DATA
 
+#ifndef LINUX
 // Use the modem as a serial repeater for Nextion displays
 #define SERIAL_REPEATER
+#endif
 
 // Use the modem as an I2C repeater for OLED displays
 // #define I2C_REPEATER

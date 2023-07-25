@@ -24,6 +24,7 @@
 // Based on Patrick Maier's code
 // https://github.com/maierp/MMDVMSdr/blob/master/SerialPort.cpp
 
+#include <cerrno>
 #include <cstdio>
 #include <fcntl.h>
 #include <termios.h>
@@ -40,41 +41,58 @@
 
 void CSerialPort::beginInt(uint8_t n, int speed)
 {
-    // Create virtual serial Port
-    m_serial_fd = open("/dev/ptmx", O_RDWR | O_NOCTTY | O_NONBLOCK);
-    grantpt(m_serial_fd);
-    unlockpt(m_serial_fd);
-    char* pts_name = ptsname(m_serial_fd);
-    LOGCONSOLE("ptsname: %s", pts_name);
+    // Only implement a virtual port for host communication (n=1).
+    // The repeater port (n=3) could be connected to a real serial port
+    // when needed but that is not a critical feature for now.
+    if (n == 1) {
+        // Create virtual serial Port
+        m_serial_fd = open("/dev/ptmx", O_RDWR | O_NOCTTY | O_NONBLOCK);
+        if (m_serial_fd < 0) {
+            LOGCONSOLE("Failed to open /dev/ptmx: %s", strerror(errno));
+            return;
+        }
+        grantpt(m_serial_fd);
+        unlockpt(m_serial_fd);
+        char* pts_name = ptsname(m_serial_fd);
+        if (pts_name == NULL) {
+            LOGCONSOLE("Failed to get pseudoterminal name");
+            return;
+        }
+        LOGCONSOLE("Pseudoterminal name: %s", pts_name);
 
-    // Try to remove the virtual serial port if it already exists
-    remove(SERIAL_DEVICE_FILE);
-    // Create symlink to virtual serial port
-    symlink(pts_name, SERIAL_DEVICE_FILE);
+        // Try to remove the virtual serial port if it already exists
+        (void)remove(SERIAL_DEVICE_FILE);
+        // Create symlink to virtual serial port
+        if (symlink(pts_name, SERIAL_DEVICE_FILE) < 0) {
+            LOGCONSOLE("Failed to create pseudoterminal symlink: %s", strerror(errno));
+        }
 
-    /* serial port parameters */
-    struct termios newtio = {};
-    struct termios oldtio = {};
-    tcgetattr(m_serial_fd, &oldtio);
+        /* serial port parameters */
+        struct termios newtio = {};
+        struct termios oldtio = {};
+        tcgetattr(m_serial_fd, &oldtio);
 
-    newtio = oldtio;
-    newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
-    newtio.c_iflag = 0;
-    newtio.c_oflag = 0;
-    newtio.c_lflag = 0;
-    newtio.c_cc[VMIN] = 1;
-    newtio.c_cc[VTIME] = 0;
-    tcflush(m_serial_fd, TCIFLUSH);
+        newtio = oldtio;
+        newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+        newtio.c_iflag = 0;
+        newtio.c_oflag = 0;
+        newtio.c_lflag = 0;
+        newtio.c_cc[VMIN] = 1;
+        newtio.c_cc[VTIME] = 0;
+        tcflush(m_serial_fd, TCIFLUSH);
 
-    cfsetispeed(&newtio, BAUDRATE);
-    cfsetospeed(&newtio, BAUDRATE);
-    tcsetattr(m_serial_fd, TCSANOW, &newtio);
+        cfsetispeed(&newtio, BAUDRATE);
+        cfsetospeed(&newtio, BAUDRATE);
+        tcsetattr(m_serial_fd, TCSANOW, &newtio);
+    }
 }
 
 int CSerialPort::availableForReadInt(uint8_t n)
 {
     int available = 0;
-    ioctl(m_serial_fd, FIONREAD, &available);
+    if (n == 1) {
+        ioctl(m_serial_fd, FIONREAD, &available);
+    }
     return available;
 }
 
@@ -86,16 +104,23 @@ int CSerialPort::availableForWriteInt(uint8_t n)
 
 uint8_t CSerialPort::readInt(uint8_t n)
 {
-    uint8_t byte = 0xFF;
-    // Making a separate syscall to read each byte
-    // is not the most efficient way but it is easiest.
-    read(m_serial_fd, &byte, 1);
+    uint8_t byte = 0xFFU;
+    if (n == 1) {
+        // Making a separate syscall to read each byte
+        // is not the most efficient way but it is easiest.
+        // Ignoring return value of read is fine here. Even if read fails,
+        // the function has to return some uint8_t value anyway.
+        (void)read(m_serial_fd, &byte, 1);
+    }
     return byte;
 }
 
 void CSerialPort::writeInt(uint8_t n, const uint8_t* data, uint16_t length, bool flush)
 {
-    write(m_serial_fd, data, length);
+    if (n == 1) {
+        // TODO: handle the case where everything is not written at once.
+        write(m_serial_fd, data, length);
+    }
 }
 
 #endif
