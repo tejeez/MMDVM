@@ -22,14 +22,17 @@
 
 #include "Config.h"
 #include "Globals.h"
+#include "Debug.h"
 #include "IO.h"
 
 void CIO::initInt()
 {
+    LOGCONSOLE("Initializing I/O");
 }
 
 void CIO::startInt()
 {
+    LOGCONSOLE("Starting I/O");
 }
 
 bool CIO::getCOSInt()
@@ -37,16 +40,24 @@ bool CIO::getCOSInt()
     return false;
 }
 
+static const char *on_off(bool on)
+{
+    return on ? "ON" : "off";
+}
+
 void CIO::setLEDInt(bool on)
 {
+    LOGCONSOLE("LED led %s", on_off(on));
 }
 
 void CIO::setPTTInt(bool on)
 {
+    LOGCONSOLE("PTT led %s", on_off(on));
 }
 
 void CIO::setCOSInt(bool on)
 {
+    LOGCONSOLE("COS led %s", on_off(on));
 }
 
 uint8_t CIO::getCPU() const

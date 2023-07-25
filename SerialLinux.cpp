@@ -36,8 +36,8 @@
 #include "Globals.h"
 #include "SerialPort.h"
 
-#define BAUDRATE B115200
-#define SERIAL_DEVICE_FILE "/dev/MMDVMSdr"
+#define BAUDRATE B460800
+#define SERIAL_DEVICE_FILE "/tmp/MMDVM_PTS"
 
 void CSerialPort::beginInt(uint8_t n, int speed)
 {
@@ -60,11 +60,14 @@ void CSerialPort::beginInt(uint8_t n, int speed)
         }
         LOGCONSOLE("Pseudoterminal name: %s", pts_name);
 
+        const char *symlink_path = SERIAL_DEVICE_FILE;
         // Try to remove the virtual serial port if it already exists
-        (void)remove(SERIAL_DEVICE_FILE);
+        (void)remove(symlink_path);
         // Create symlink to virtual serial port
-        if (symlink(pts_name, SERIAL_DEVICE_FILE) < 0) {
-            LOGCONSOLE("Failed to create pseudoterminal symlink: %s", strerror(errno));
+        if (symlink(pts_name, symlink_path) < 0) {
+            LOGCONSOLE("Failed to create pseudoterminal symlink at %s: %s", symlink_path, strerror(errno));
+        } else {
+            LOGCONSOLE("Pseudoterminal symlinked to %s", symlink_path);
         }
 
         /* serial port parameters */
