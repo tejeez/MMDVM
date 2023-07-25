@@ -7,3 +7,6 @@
 [submodule "STM32F10X_Lib"]
 	path = STM32F10X_Lib
 	url = https://github.com/shawnchain/STM32F10X_Lib.git
+[submodule "CMSIS_4"]
+	path = CMSIS_4
+	url = https://github.com/ARM-software/CMSIS_4.git

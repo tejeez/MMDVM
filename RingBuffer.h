@@ -27,7 +27,7 @@
 #elif defined(STM32F105xC)
 #include "stm32f1xx.h"
 #include <cstddef>
-#else
+#elif defined(__SAM3X8E__) || defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
 #include <Arduino.h>
 #undef PI
 #endif
@@ -38,8 +38,6 @@
 #define  ARM_MATH_CM7
 #elif defined(STM32F4XX) || defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
 #define  ARM_MATH_CM4
-#else
-#error "Unknown processor type"
 #endif
 
 #include <arm_math.h>

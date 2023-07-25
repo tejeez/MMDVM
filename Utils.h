@@ -26,8 +26,10 @@
 #elif defined(STM32F105xC)
 #include "stm32f1xx.h"
 #include <cstddef>
-#else
+#elif defined(__SAM3X8E__) || defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
 #include <Arduino.h>
+#else
+#include <cstdint>
 #endif
 
 uint8_t countBits8(uint8_t bits);

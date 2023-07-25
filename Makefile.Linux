@@ -1,0 +1,106 @@
+#  Copyright (C) 2023 Tatu Peltola OH2EAT
+#  Copyright (C) 2016,2017,2018 by Andy Uribe CA6JAU
+#  Copyright (C) 2016 by Jim McLaughlin KI6ZUM
+
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# MMDVM source files
+MMDVM_PATH=.
+
+# Library paths
+DSP_LIB_PATH=./CMSIS_4/CMSIS
+DSP_SRC_PATH=$(DSP_LIB_PATH)/DSP_Lib/Source
+
+# Directory Structure
+BINDIR=bin_linux
+OBJDIR=obj_linux
+
+# Output files
+BINELF=mmdvm
+
+# Header directories
+INCLUDES=-I. -I$(DSP_LIB_PATH)/Include
+
+# Commands
+CLEANCMD=rm -rf -- $(OBJDIR) $(BINDIR) GitVersion.h
+MDDIRS=mkdir -p -- $@
+
+# Build object lists
+CXXSRC=$(wildcard $(MMDVM_PATH)/*.cpp)
+CSRC_DSP=$(wildcard \
+ $(DSP_SRC_PATH)/FastMathFunctions/*.c  \
+ $(DSP_SRC_PATH)/FilteringFunctions/*.c \
+ $(DSP_SRC_PATH)/SupportFunctions/*.c   \
+ $(DSP_SRC_PATH)/CommonTables/*.c       )
+OBJ=$(CXXSRC:$(MMDVM_PATH)/%.cpp=$(OBJDIR)/%.o) $(addprefix $(OBJDIR)/,$(notdir $(CSRC_DSP:.c=.o)))
+vpath %.c $(sort $(dir $(CSRC_DSP)))
+
+# Compile flags
+DEFS=-DLINUX -DMADEBYMAKEFILE
+# Pretend the processor is a Cortex-M0, so CMSIS DSP library does not try
+# to use ARM SIMD instructions. This way it compiles for any processor.
+DEFS+=-DARM_MATH_CM0
+
+# Common flags
+CFLAGS=-c -Os -std=c11 -ffunction-sections -fdata-sections -fno-builtin -Wno-implicit -DCUSTOM_NEW -DNO_EXCEPTIONS $(DEFS) $(INCLUDES)
+CXXFLAGS=-c -Os -std=c++11 -fpermissive -fno-exceptions -ffunction-sections -fdata-sections -fno-builtin -fno-rtti -DCUSTOM_NEW -DNO_EXCEPTIONS $(DEFS) $(INCLUDES)
+LDFLAGS=-Os -Wl,-Map=$(BINDIR)/mmdvm.map
+
+# Generate dependency information
+CFLAGS+=-MMD -MP -MF"$(@:%.o=%.d)"
+CXXFLAGS+=-MMD -MP -MF"$(@:%.o=%.d)"
+
+# Build Rules
+.PHONY: all clean
+
+all: $(BINDIR)/$(BINELF)
+
+$(BINDIR):
+	$(MDDIRS)
+
+$(OBJDIR):
+	$(MDDIRS)
+
+$(BINDIR)/$(BINELF): $(OBJ) | $(BINDIR)
+	$(CXX) $(OBJ) $(LDFLAGS) -o $@
+	@echo "Linking complete!\n"
+
+$(OBJDIR)/%.o: $(MMDVM_PATH)/%.cpp GitVersion.h | $(OBJDIR)
+	$(CXX) $(CXXFLAGS) $< -o $@
+	@echo "Compiled "$<"!\n"
+
+$(OBJDIR)/%.o: %.c | $(OBJDIR)
+	$(CC) $(CFLAGS) $< -o $@
+	@echo "Compiled "$<"!\n"
+
+clean:
+	$(CLEANCMD)
+
+# Export the current git version if the index file exists, else 000...
+GitVersion.h:
+ifdef SYSTEMROOT
+	echo #define GITVERSION "0000000" > $@
+else ifdef SystemRoot
+	echo #define GITVERSION "0000000" > $@
+else
+ifneq ("$(wildcard .git/index)","")
+	echo "#define GITVERSION \"$(shell git rev-parse --short HEAD)\"" > $@
+else
+	echo "#define GITVERSION \"0000000\"" > $@
+endif
+endif
+
+# Dependencies
+-include $(wildcard $(OBJDIR)/*.d)
