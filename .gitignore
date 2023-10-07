@@ -5,3 +5,4 @@ bin/
 bin_*/
 GitVersion.h
 build/
+mmdvm_*.raw

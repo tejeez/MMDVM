@@ -24,6 +24,11 @@
 
 #include "RingBuffer.h"
 
+#if defined(LINUX_IO_FILE)
+#include <iostream>
+#include <fstream>
+#endif
+
 struct TSample {
   volatile uint16_t sample;
   volatile uint8_t control;
@@ -167,6 +172,11 @@ private:
   void delayInt(unsigned int dly);
 
 #if defined(LINUX)
+
+#if defined(LINUX_IO_FILE)
+  std::ofstream *tx_output_fd;
+#endif
+
 #endif
 };
 

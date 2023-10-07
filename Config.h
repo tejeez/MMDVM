@@ -137,5 +137,12 @@
 #define SERIAL_SPEED 115200
 #endif
 
+#if defined(LINUX)
+
+// Use file I/O for signals
+#define LINUX_IO_FILE
+
+#endif
+
 #endif
 
