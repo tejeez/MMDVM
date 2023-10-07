@@ -41,6 +41,7 @@ public:
   void start();
 
   void process();
+  void processRxBlock();
 
   void write(MMDVM_STATE mode, q15_t* samples, uint16_t length, const uint8_t* control = NULL);
 

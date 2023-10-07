@@ -29,7 +29,7 @@
 #include <SoapySDR/Device.hpp>
 
 static const uint16_t DC_OFFSET = 2048U;
-static const uint16_t LINUX_IO_BLOCK_SIZE = 2U;
+static const uint16_t LINUX_IO_BLOCK_SIZE = 96U;
 
 void CIO::initInt()
 {
@@ -50,12 +50,16 @@ void CIO::processInt()
 #if defined(LINUX_IO_FILE)
     // Read TX buffer and write RX buffer in blocks,
     // somewhat simulating SDR or sound-card I/O.
-    uint16_t tx_output_buf[LINUX_IO_BLOCK_SIZE * 2];
+    uint16_t tx_output_buf[LINUX_IO_BLOCK_SIZE * 4];
     for (size_t i = 0; i < LINUX_IO_BLOCK_SIZE; i++) {
         TSample sample = {DC_OFFSET, MARK_NONE};
         m_txBuffer.get(sample);
-        tx_output_buf[i * 2    ] = sample.sample;
-        tx_output_buf[i * 2 + 1] = sample.control;
+        tx_output_buf[i * 4    ] = sample.sample;
+        tx_output_buf[i * 4 + 1] = sample.control;
+        // Also write buffer statuses to the file
+        // to see how they behave.
+        tx_output_buf[i * 4 + 2] = m_txBuffer.getData();
+        tx_output_buf[i * 4 + 3] = m_rxBuffer.getSpace();
         // Transfer marks into the RX buffer
         // but use silence as the signal for now.
         sample.sample = DC_OFFSET;

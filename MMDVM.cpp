@@ -108,17 +108,8 @@ CCWIdTX cwIdTX;
 CSerialPort serial;
 CIO io;
 
-void setup()
+static void processTx(void)
 {
-  serial.start();
-}
-
-void loop()
-{
-  serial.process();
-  
-  io.process();
-
   // The following is for transmitting
 #if defined(MODE_DSTAR)
   if (m_dstarEnable && m_modemState == STATE_DSTAR)
@@ -206,6 +197,32 @@ void loop()
 
   if (m_modemState == STATE_IDLE)
     cwIdTX.process();
+}
+
+void setup()
+{
+  serial.start();
+}
+
+void loop()
+{
+  serial.process();
+  io.process();
+
+#if defined(LINUX)
+  // Produce all available TX samples that fit in buffer.
+  // Stop when TX buffer fullness did not change, which indicates
+  // there is not enough space in the buffer to produce samples
+  // before more I/O is performed.
+  uint16_t previous_space, space = io.getSpace();
+  do {
+    processTx();
+    previous_space = space;
+    space = io.getSpace();
+  } while(space != previous_space);
+#else
+  processTx();
+#endif
 }
 
 int main()

@@ -336,6 +336,25 @@ void CIO::start()
 void CIO::process()
 {
   processInt();
+#if defined(LINUX)
+  // Process all available samples in RX buffer
+  // as long as there is something to process.
+  // Stop when RX buffer fullness did not change, which indicates
+  // there is not enough data in the buffer to process
+  // before more I/O is performed.
+  uint16_t previous_data, data = m_rxBuffer.getData();
+  do {
+    processRxBlock();
+    previous_data = data;
+    data = m_rxBuffer.getData();
+  } while(data != previous_data);
+#else
+  processRxBlock();
+#endif
+}
+
+void CIO::processRxBlock()
+{
   m_ledCount++;
   if (m_started) {
     // Two seconds timeout
