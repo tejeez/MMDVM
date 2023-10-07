@@ -153,7 +153,6 @@ private:
   // Hardware specific routines
   void initInt();
   void startInt();
-  void processInt();
 
   bool getCOSInt();
 
@@ -173,6 +172,7 @@ private:
   void delayInt(unsigned int dly);
 
 #if defined(LINUX)
+  void processInt();
 
 #if defined(LINUX_IO_FILE)
   std::ofstream *tx_output_fd;

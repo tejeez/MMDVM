@@ -367,11 +367,6 @@ void CIO::startInt()
   BB_LED = 1;
 }
 
-void CIO::processInt()
-{
-  // No hardware specific processing needed
-}
-
 void CIO::interrupt()
 {
   TSample sample = {DC_OFFSET, MARK_NONE};

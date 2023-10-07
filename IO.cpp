@@ -335,8 +335,11 @@ void CIO::start()
 
 void CIO::process()
 {
-  processInt();
 #if defined(LINUX)
+  // Perform I/O.
+  // processInt blocks until enough RX samples have arrived
+  // from the receiver, so that main loop runs once per I/O block.
+  processInt();
   // Process all available samples in RX buffer
   // as long as there is something to process.
   // Stop when RX buffer fullness did not change, which indicates
@@ -349,6 +352,10 @@ void CIO::process()
     data = m_rxBuffer.getData();
   } while(data != previous_data);
 #else
+  // On microcontroller platforms, I/O is performed in interrupts,
+  // so calling processInt is not necessary.
+  // Apparently, main loop also repeats often enough that processing
+  // only one RX block per main loop iteration is enough.
   processRxBlock();
 #endif
 }
