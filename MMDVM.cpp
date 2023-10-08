@@ -25,6 +25,7 @@
 
 // Global variables
 MMDVM_STATE m_modemState = STATE_IDLE;
+volatile bool m_running = 1;
 
 bool m_dstarEnable  = true;
 bool m_dmrEnable    = true;
@@ -229,7 +230,7 @@ int main()
 {
   setup();
 
-  for (;;)
+  while (m_running)
     loop();
 }
 

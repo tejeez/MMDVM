@@ -24,18 +24,73 @@
 #include "IO.h"
 
 #include <stdio.h>
+#include <signal.h>
 #include <unistd.h>
-
-#include <SoapySDR/Device.hpp>
 
 static const uint16_t DC_OFFSET = 2048U;
 static const uint16_t LINUX_IO_BLOCK_SIZE = 96U;
 
+void sighandler(void)
+{
+    m_running = 0;
+}
+
+static void setup_sighandler(void)
+{
+    // Setup a signal handler, so that I/O device can be
+    // correctly shut down when the program is terminated.
+    struct sigaction sigact;
+    sigact.sa_handler = sighandler;
+    ::sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags = 0;
+    ::sigaction(SIGHUP, &sigact, NULL);
+    ::sigaction(SIGINT, &sigact, NULL);
+    ::sigaction(SIGQUIT, &sigact, NULL);
+    ::sigaction(SIGTERM, &sigact, NULL);
+    ::sigaction(SIGPIPE, &sigact, NULL);
+}
+
 void CIO::initInt()
 {
     LOGCONSOLE("Initializing I/O");
+    setup_sighandler();
+
 #if defined(LINUX_IO_FILE)
-    tx_output_fd = new std::ofstream("mmdvm_tx_output.raw");
+    m_txFile = new std::ofstream("mmdvm_tx_output.raw");
+#elif defined(LINUX_IO_SOAPYSDR)
+
+    SoapySDR::Kwargs device_args;
+    SoapySDR::Kwargs rx_args;
+    SoapySDR::Kwargs tx_args;
+    size_t rx_channel = 0, tx_channel = 0;
+    double samplerate = 0;
+#if defined(LINUX_IO_LIMESDR)
+    device_args["driver"] = "lime";
+    rx_args["latency"] = "0";
+    tx_args["latency"] = "0";
+    samplerate = 240000;
+#endif
+
+    try {
+        m_device = SoapySDR::Device::make(device_args);
+        m_device->setSampleRate(SOAPY_SDR_RX, rx_channel, samplerate);
+        m_device->setSampleRate(SOAPY_SDR_TX, tx_channel, samplerate);
+        m_rxStream = m_device->setupStream(SOAPY_SDR_RX, "CF32", {rx_channel}, rx_args);
+        m_txStream = m_device->setupStream(SOAPY_SDR_TX, "CF32", {tx_channel}, tx_args);
+        LOGCONSOLE("SoapySDR device setup done");
+    } catch (std::runtime_error &e) {
+        LOGCONSOLE("Error setting up SoapySDR device: %s", e.what());
+        m_running = 0;
+    }
+#endif
+}
+
+void CIO::exitInt()
+{
+    LOGCONSOLE("Closing I/O");
+#if defined(LINUX_IO_SOAPYSDR)
+    if (m_device != NULL)
+        SoapySDR::Device::unmake(m_device);
 #endif
 }
 
@@ -46,7 +101,6 @@ void CIO::startInt()
 
 void CIO::processInt()
 {
-    // TODO
 #if defined(LINUX_IO_FILE)
     // Read TX buffer and write RX buffer in blocks,
     // somewhat simulating SDR or sound-card I/O.
@@ -67,9 +121,17 @@ void CIO::processInt()
         m_rssiBuffer.put(0U);
     }
 
-    tx_output_fd->write((char*)tx_output_buf, sizeof(tx_output_buf));
+    m_txFile->write((char*)tx_output_buf, sizeof(tx_output_buf));
     // Simulate I/O happening at roughly the correct rate.
     usleep(1000000 / 24000 * LINUX_IO_BLOCK_SIZE);
+#endif
+#if defined(LINUX_IO_SOAPYSDR)
+    if (m_device == NULL || m_rxStream == NULL || m_txStream == NULL) {
+        // Initialization has failed.
+        return;
+    }
+
+    // TODO: handle streams
 #endif
 }
 

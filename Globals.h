@@ -123,6 +123,8 @@ const uint16_t TX_BUFFER_LEN = 4000U;
 #endif
 
 extern MMDVM_STATE m_modemState;
+// Set to 0 when the program should exit.
+extern volatile bool m_running;
 
 extern bool m_dstarEnable;
 extern bool m_dmrEnable;

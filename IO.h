@@ -24,9 +24,16 @@
 
 #include "RingBuffer.h"
 
+#if defined(LINUX_IO_LIMESDR)
+#define LINUX_IO_SOAPYSDR
+#endif
+
 #if defined(LINUX_IO_FILE)
 #include <iostream>
 #include <fstream>
+#endif
+#if defined(LINUX_IO_SOAPYSDR)
+#include <SoapySDR/Device.hpp>
 #endif
 
 struct TSample {
@@ -37,6 +44,7 @@ struct TSample {
 class CIO {
 public:
   CIO();
+  ~CIO();
 
   void start();
 
@@ -173,9 +181,15 @@ private:
 
 #if defined(LINUX)
   void processInt();
+  void exitInt();
 
 #if defined(LINUX_IO_FILE)
-  std::ofstream *tx_output_fd;
+  std::ofstream *m_txFile;
+#endif
+#if defined(LINUX_IO_SOAPYSDR)
+  SoapySDR::Device *m_device;
+  SoapySDR::Stream *m_rxStream;
+  SoapySDR::Stream *m_txStream;
 #endif
 
 #endif

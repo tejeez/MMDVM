@@ -141,6 +141,14 @@ m_adcOverflow(0U),
 m_dacOverflow(0U),
 m_watchdog(0U),
 m_lockout(false)
+#if defined(LINUX_IO_FILE)
+,m_txFile(NULL)
+#endif
+#if defined(LINUX_IO_SOAPYSDR)
+,m_device(NULL)
+,m_rxStream(NULL)
+,m_txStream(NULL)
+#endif
 {
 #if defined(USE_DCBLOCKER)
   ::memset(m_dcState, 0x00U, 4U * sizeof(q31_t));
@@ -208,6 +216,13 @@ m_lockout(false)
   initInt();
   
   selfTest();
+}
+
+CIO::~CIO()
+{
+#if defined(LINUX)
+  exitInt();
+#endif
 }
 
 void CIO::selfTest()
