@@ -6,3 +6,4 @@ bin_*/
 GitVersion.h
 build/
 mmdvm_*.raw
+test_*.raw

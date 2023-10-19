@@ -30,8 +30,9 @@
 static const uint16_t DC_OFFSET = 2048U;
 static const uint16_t LINUX_IO_BLOCK_SIZE = 96U;
 
-void sighandler(void)
+void sighandler(int sig)
 {
+    (void)sig;
     m_running = 0;
 }
 
@@ -56,7 +57,7 @@ void CIO::initInt()
     setup_sighandler();
 
 #if defined(LINUX_IO_FILE)
-    m_txFile = new std::ofstream("mmdvm_tx_output.raw");
+    m_txFile = new std::ofstream("mmdvm_tx_iq_output.raw");
 #elif defined(LINUX_IO_SOAPYSDR)
 
     SoapySDR::Kwargs device_args;
@@ -83,6 +84,7 @@ void CIO::initInt()
         m_running = 0;
     }
 #endif
+    m_dudc = new FDUDC(24, 125, 3, 40, 3, 40);
 }
 
 void CIO::exitInt()
@@ -92,6 +94,37 @@ void CIO::exitInt()
     if (m_device != NULL)
         SoapySDR::Device::unmake(m_device);
 #endif
+}
+
+void CIO::processIqBlock(std::vector<std::complex<float>> &buf)
+{
+    m_dudc->process(buf, [this](std::complex<float> rx_iq_sample) {
+        const int32_t fm_deviation = 500000; // TODO
+
+        std::complex<float> tx_iq_sample = { 0.0f, 0.0f };
+        TSample fm_sample = { DC_OFFSET, MARK_NONE };
+        if (m_txBuffer.getData() >= 1) {
+            m_txBuffer.get(fm_sample);
+
+            // Modulate TX FM
+            m_phase += ((int32_t)fm_sample.sample - (int32_t)DC_OFFSET) * fm_deviation;
+            float ph = m_phase * (float)(M_PI / 0x80000000UL);
+            tx_iq_sample = { cosf(ph), sinf(ph) };
+        }
+
+        // Demodulate RX FM
+        auto d = std::arg(rx_iq_sample * std::conj(m_prev_rx_iq_sample));
+        m_prev_rx_iq_sample = rx_iq_sample;
+        // Scale -pi...pi to 0...DC_OFFSET*2
+        d = d * ((float)DC_OFFSET / (float)M_PI) + (float)DC_OFFSET;
+
+        // TODO: delay slot flags
+
+        fm_sample.sample = (uint16_t)d;
+        m_rxBuffer.put(fm_sample);
+        m_rssiBuffer.put(0U);
+        return tx_iq_sample;
+    });
 }
 
 void CIO::startInt()
@@ -104,24 +137,9 @@ void CIO::processInt()
 #if defined(LINUX_IO_FILE)
     // Read TX buffer and write RX buffer in blocks,
     // somewhat simulating SDR or sound-card I/O.
-    uint16_t tx_output_buf[LINUX_IO_BLOCK_SIZE * 4];
-    for (size_t i = 0; i < LINUX_IO_BLOCK_SIZE; i++) {
-        TSample sample = {DC_OFFSET, MARK_NONE};
-        m_txBuffer.get(sample);
-        tx_output_buf[i * 4    ] = sample.sample;
-        tx_output_buf[i * 4 + 1] = sample.control;
-        // Also write buffer statuses to the file
-        // to see how they behave.
-        tx_output_buf[i * 4 + 2] = m_txBuffer.getData();
-        tx_output_buf[i * 4 + 3] = m_rxBuffer.getSpace();
-        // Transfer marks into the RX buffer
-        // but use silence as the signal for now.
-        sample.sample = DC_OFFSET;
-        m_rxBuffer.put(sample);
-        m_rssiBuffer.put(0U);
-    }
-
-    m_txFile->write((char*)tx_output_buf, sizeof(tx_output_buf));
+    std::vector<std::complex<float>> buf(LINUX_IO_BLOCK_SIZE);
+    processIqBlock(buf);
+    m_txFile->write((char*)buf.data(), buf.size() * sizeof(std::complex<float>));
     // Simulate I/O happening at roughly the correct rate.
     usleep(1000000 / 24000 * LINUX_IO_BLOCK_SIZE);
 #endif

@@ -28,6 +28,10 @@
 #define LINUX_IO_SOAPYSDR
 #endif
 
+#if defined(LINUX)
+#include "FDUDC.h"
+#endif
+
 #if defined(LINUX_IO_FILE)
 #include <iostream>
 #include <fstream>
@@ -182,6 +186,13 @@ private:
 #if defined(LINUX)
   void processInt();
   void exitInt();
+  void processIqBlock(std::vector<std::complex<float>> &buf);
+
+  FDUDC *m_dudc;
+  // Phase accumulator for FM modulator
+  uint32_t m_phase;
+  // Previous sample for FM demodulator
+  std::complex<float> m_prev_rx_iq_sample;
 
 #if defined(LINUX_IO_FILE)
   std::ofstream *m_txFile;

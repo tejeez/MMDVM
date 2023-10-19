@@ -113,7 +113,34 @@ const uint8_t  MARK_NONE  = 0x00U;
 
 const uint16_t RX_BLOCK_SIZE = 2U;
 
+// On microcontroller platforms, TX and RX ring buffers are used to buffer
+// data between interrupts handler and main loop.
+// Interrupt handler works with one sample at a time with precise timing,
+// whereas main loop runs with more varying timing and processes data
+// in blocks of a few samples.
+// Ring buffers are needed to buffer data between these.
+//
+// On Linux, this kind of buffering is already done by hardware and device
+// drivers (possibly with their own internal ring buffers), and MMDVM code
+// runs in a single thread without "interrupts".
+// MMDVM ring buffers are still used, however, because a lot of MMDVM code
+// is built around use of these buffers.
+//
+// MMDVM transmit code writes to the transmit buffer as long as it has
+// enough space, so the transmit ring buffer is kept close to full most
+// of the time. Thus, the size of the buffer determines how much before
+// actual transmission TX samples are produced.
+// Hardware and device driver buffers on Linux add additional delay on top
+// of this. To compensate, make the MMDVM transmit ring buffer smaller
+// on Linux, so that the total amount of buffered data stays similar,
+// keeping the total latency from TX sample production to actual
+// transmission similar.
+#if defined(LINUX)
+const uint16_t TX_RINGBUFFER_SIZE = 240U;
+#else
 const uint16_t TX_RINGBUFFER_SIZE = 500U;
+#endif
+
 const uint16_t RX_RINGBUFFER_SIZE = 600U;
 
 #if defined(STM32F105xC) || defined(__MK20DX256__)
