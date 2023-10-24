@@ -43,7 +43,9 @@ FDUDC::FDUDC(
     int      rxIfNum,
     unsigned rxIfDen,
     int      txIfNum,
-    unsigned txIfDen
+    unsigned txIfDen,
+    unsigned length,
+    float cutoff
 ):
 m_resampNum(resampNum),
 m_resampDen(resampDen),
@@ -52,7 +54,7 @@ m_i(0),
 m_ddc_i(0),
 m_duc_i(0)
 {
-    size_t approxlen = (size_t)resampDen * 20;
+    size_t approxlen = (size_t)resampDen * (size_t)length;
     // Number of filter branches:
     size_t branches = resampNum;
     // resampNum determines the number of polyphase branches.
@@ -65,10 +67,10 @@ m_duc_i(0)
 
     m_taps.resize(totallen);
     // Cutoff frequency in radians per sample
-    float cutoff = (0.75f * M_PIf32) / (float)(resampDen);
+    float sinc_cutoff = (cutoff * M_PIf32) / (float)(resampDen);
     float sum = 0.0f;
     for (size_t i = 0; i < totallen; i++) {
-        float v = windowed_sinc(i, totallen, cutoff);
+        float v = windowed_sinc(i, totallen, sinc_cutoff);
         m_taps[i] = v;
         sum += v;
     }

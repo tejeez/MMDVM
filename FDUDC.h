@@ -15,7 +15,16 @@ public:
         int      rxIfNum,
         unsigned rxIfDen,
         int      txIfNum,
-        unsigned txIfDen
+        unsigned txIfDen,
+        // Approximate length of the filter in downconverted samples.
+        // A higher value results in a narrower transition band
+        // but higher CPU use.
+        // Delay of the filter in downconverted samples
+        // is approximately half of this value.
+        unsigned length = 9,
+        // Cutoff frequency as a fraction of Nyquist frequency
+        // of downconverted sampler rate
+        float cutoff = 0.45f
     );
     void process(
         std::vector<std::complex<float>> &buffer,
