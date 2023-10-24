@@ -29,15 +29,6 @@ private:
     // This determines the decimation factor for DDC
     // and interpolation factor for DUC.
     unsigned m_resampDen;
-    // RX I/Q intermediate frequency,
-    // i.e. frequency that will be converted to 0 in DDC,
-    // as a fraction of radio sample rate.
-    int      m_rxIfNum;
-    unsigned m_rxIfDen;
-    // TX I/Q intermediate frequency
-    // as a fraction of radio sample rate.
-    int      m_txIfNum;
-    unsigned m_txIfDen;
 
     // Polyphase filter phase
     unsigned m_p;

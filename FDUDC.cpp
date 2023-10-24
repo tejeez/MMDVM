@@ -27,6 +27,16 @@ static float windowed_sinc(size_t i, size_t length, float cutoff)
     return sinc(cutoff * ((float)i - 0.5f*float(length))) * hann_window(i, length);
 }
 
+static void make_sine_table(std::vector<std::complex<float>> &table, int freqNum, unsigned freqDen)
+{
+    // Frequency in radians per sample
+    float freq = (float)freqNum / float(freqDen) * (M_PIf32 * 2.0f);
+    table.resize(freqDen);
+    for (size_t i = 0; i < (size_t)freqDen; i++) {
+        table[i] = std::polar(1.0f, freq * (float)i);
+    }
+}
+
 FDUDC::FDUDC(
     unsigned resampNum,
     unsigned resampDen,
@@ -37,10 +47,6 @@ FDUDC::FDUDC(
 ):
 m_resampNum(resampNum),
 m_resampDen(resampDen),
-m_rxIfNum(rxIfNum),
-m_rxIfDen(rxIfDen),
-m_txIfNum(txIfNum),
-m_txIfDen(txIfDen),
 m_p(0),
 m_i(0),
 m_ddc_i(0),
@@ -77,12 +83,8 @@ m_duc_i(0)
     m_in.resize(branchlen * 2);
     m_out.resize(branchlen * 2);
 
-    // TODO: make local oscillator tables.
-    // Test first without frequency conversion.
-    m_ddc_sine.resize(1);
-    m_duc_sine.resize(1);
-    m_ddc_sine[0] = { 1.0f, 0.0f };
-    m_duc_sine[0] = { 1.0f, 0.0f };
+    make_sine_table(m_ddc_sine, -rxIfNum, rxIfDen);
+    make_sine_table(m_duc_sine, txIfNum, txIfDen);
 };
 
 void FDUDC::process(
