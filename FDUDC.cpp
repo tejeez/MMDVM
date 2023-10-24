@@ -91,6 +91,9 @@ void FDUDC::process(
 )
 {
     const size_t branchlen = m_in.size() / 2;
+    // Scaling needed so that DUC has unity gain in passband
+    const float duc_scaling = (float)m_resampDen / (float)m_resampNum;
+
     for (auto &sample : buffer) {
         m_in[m_i] = m_in[m_i + branchlen] = sample * m_ddc_sine[m_ddc_i];
         if (++m_ddc_i >= m_ddc_sine.size())
@@ -111,11 +114,10 @@ void FDUDC::process(
                 p += (size_t)m_resampNum;
             }
 
-            v = process_sample(v);
+            v = duc_scaling * process_sample(v);
 
             p = (size_t)m_p;
             window = &m_out[m_i + 1];
-            v = { 0.0f, 0.0f };
             for (size_t i = 0; i < branchlen; i++) {
                 assert(p < m_taps.size());
                 window[i] += v * m_taps[p];
