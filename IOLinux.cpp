@@ -28,7 +28,6 @@
 #include <unistd.h>
 
 static const uint16_t DC_OFFSET = 2048U;
-static const uint16_t LINUX_IO_BLOCK_SIZE = 96U;
 
 void sighandler(int sig)
 {
@@ -56,26 +55,48 @@ void CIO::initInt()
     LOGCONSOLE("Initializing I/O");
     setup_sighandler();
 
+    double rxFreq = 434.0e6, txFreq = 434.0e6;
+
+    int blockSize = 96;
+    int resampNum = 1, resampDen = 1;
+    int rxIfNum = 1, rxIfDen = 12;
+    int txIfNum = 1, txIfDen = 12;
+
+#if defined(LINUX_IO_LIMESDR)
+    resampNum = 2;
+    resampDen = 25;
+    blockSize = 1024;
+#endif
+
+    m_buffer.resize(blockSize);
+    m_dudc = new FDUDC(resampNum, resampDen, rxIfNum, rxIfDen, txIfNum, txIfDen, 11, 0.5f);
+    double samplerate = 24000.0 * (double)resampDen / (double)resampNum;
+
 #if defined(LINUX_IO_FILE)
     m_txFile = new std::ofstream("mmdvm_tx_iq_output.raw");
 #elif defined(LINUX_IO_SOAPYSDR)
+    m_latencyNs = (long long)std::round(1e9 / samplerate * (double)(blockSize * 3));
 
     SoapySDR::Kwargs device_args;
     SoapySDR::Kwargs rx_args;
     SoapySDR::Kwargs tx_args;
     size_t rx_channel = 0, tx_channel = 0;
-    double samplerate = 0;
 #if defined(LINUX_IO_LIMESDR)
     device_args["driver"] = "lime";
     rx_args["latency"] = "0";
     tx_args["latency"] = "0";
-    samplerate = 240000;
 #endif
 
     try {
         m_device = SoapySDR::Device::make(device_args);
         m_device->setSampleRate(SOAPY_SDR_RX, rx_channel, samplerate);
         m_device->setSampleRate(SOAPY_SDR_TX, tx_channel, samplerate);
+        m_device->setFrequency(SOAPY_SDR_RX, rx_channel, rxFreq - samplerate * (double)rxIfNum / (double)rxIfDen);
+        m_device->setFrequency(SOAPY_SDR_TX, tx_channel, txFreq - samplerate * (double)txIfNum / (double)txIfDen);
+        m_device->setAntenna(SOAPY_SDR_RX, rx_channel, "LNAL");
+        m_device->setAntenna(SOAPY_SDR_TX, tx_channel, "BAND1");
+        m_device->setGain(SOAPY_SDR_RX, rx_channel, 50.0);
+        m_device->setGain(SOAPY_SDR_TX, tx_channel, 30.0);
         m_rxStream = m_device->setupStream(SOAPY_SDR_RX, "CF32", {rx_channel}, rx_args);
         m_txStream = m_device->setupStream(SOAPY_SDR_TX, "CF32", {tx_channel}, tx_args);
         LOGCONSOLE("SoapySDR device setup done");
@@ -84,7 +105,6 @@ void CIO::initInt()
         m_running = 0;
     }
 #endif
-    m_dudc = new FDUDC(24, 125, 3, 40, 3, 40);
 }
 
 void CIO::exitInt()
@@ -100,6 +120,7 @@ void CIO::processIqBlock(std::vector<std::complex<float>> &buf)
 {
     m_dudc->process(buf, [this](std::complex<float> rx_iq_sample) {
         const int32_t fm_deviation = 500000; // TODO
+        const float tx_amplitude = 0.7f;
 
         std::complex<float> tx_iq_sample = { 0.0f, 0.0f };
         TSample fm_sample = { DC_OFFSET, MARK_NONE };
@@ -109,7 +130,7 @@ void CIO::processIqBlock(std::vector<std::complex<float>> &buf)
             // Modulate TX FM
             m_phase += ((int32_t)fm_sample.sample - (int32_t)DC_OFFSET) * fm_deviation;
             float ph = m_phase * (float)(M_PI / 0x80000000UL);
-            tx_iq_sample = { cosf(ph), sinf(ph) };
+            tx_iq_sample = std::polar(tx_amplitude, ph);
         }
 
         // Demodulate RX FM
@@ -137,19 +158,39 @@ void CIO::processInt()
 #if defined(LINUX_IO_FILE)
     // Read TX buffer and write RX buffer in blocks,
     // somewhat simulating SDR or sound-card I/O.
-    std::vector<std::complex<float>> buf(LINUX_IO_BLOCK_SIZE);
-    processIqBlock(buf);
-    m_txFile->write((char*)buf.data(), buf.size() * sizeof(std::complex<float>));
+    processIqBlock(m_buffer);
+    m_txFile->write((char*)m_buffer.data(), m_buffer.size() * sizeof(std::complex<float>));
     // Simulate I/O happening at roughly the correct rate.
-    usleep(1000000 / 24000 * LINUX_IO_BLOCK_SIZE);
+    usleep(1000000 / 24000 * m_buffer.size());
 #endif
 #if defined(LINUX_IO_SOAPYSDR)
     if (m_device == NULL || m_rxStream == NULL || m_txStream == NULL) {
         // Initialization has failed.
         return;
     }
+    if (!m_streamsOn) {
+        m_device->activateStream(m_rxStream);
+        m_device->activateStream(m_txStream);
+        m_streamsOn = true;
+    }
 
-    // TODO: handle streams
+    void *buffs[1] = { (void*)m_buffer.data() };
+    int flags = 0;
+    long long timeNs = 0;
+    int ret = 0;
+    ret = m_device->readStream(m_rxStream, buffs, m_buffer.size(), flags, timeNs);
+    //LOGCONSOLE("RX: %d", ret);
+    if (ret <= 0) {
+        // TODO: report or handle errors
+    }
+    processIqBlock(m_buffer);
+    timeNs += m_latencyNs;
+    flags = SOAPY_SDR_HAS_TIME;
+    ret = m_device->writeStream(m_txStream, buffs, m_buffer.size(), flags, timeNs);
+    //LOGCONSOLE("TX: %d", ret);
+    if (ret <= 0) {
+        // TODO: report or handle errors
+    }
 #endif
 }
 

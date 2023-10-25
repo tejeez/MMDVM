@@ -194,6 +194,7 @@ private:
   // Previous sample for FM demodulator
   std::complex<float> m_prev_rx_iq_sample;
 
+  std::vector<std::complex<float>> m_buffer;
 #if defined(LINUX_IO_FILE)
   std::ofstream *m_txFile;
 #endif
@@ -201,6 +202,9 @@ private:
   SoapySDR::Device *m_device;
   SoapySDR::Stream *m_rxStream;
   SoapySDR::Stream *m_txStream;
+  // Difference from latest received timestamp to next transmitted timestamp
+  long long m_latencyNs;
+  bool m_streamsOn;
 #endif
 
 #endif

@@ -141,6 +141,9 @@ m_adcOverflow(0U),
 m_dacOverflow(0U),
 m_watchdog(0U),
 m_lockout(false)
+#if defined(LINUX)
+,m_phase(0)
+,m_prev_rx_iq_sample({0.0f, 0.0f})
 #if defined(LINUX_IO_FILE)
 ,m_txFile(NULL)
 #endif
@@ -148,6 +151,9 @@ m_lockout(false)
 ,m_device(NULL)
 ,m_rxStream(NULL)
 ,m_txStream(NULL)
+,m_latencyNs(0)
+,m_streamsOn(false)
+#endif
 #endif
 {
 #if defined(USE_DCBLOCKER)
@@ -214,8 +220,10 @@ m_lockout(false)
 #endif
 
   initInt();
-  
+
+#ifndef LINUX
   selfTest();
+#endif
 }
 
 CIO::~CIO()
