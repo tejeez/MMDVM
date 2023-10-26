@@ -57,7 +57,8 @@ void CIO::initInt()
 
     double rxFreq = 434.0e6, txFreq = 434.0e6;
 
-    int blockSize = 96;
+    size_t blockSize = 96;
+    size_t latencyBlocks = 3;
     int resampNum = 1, resampDen = 1;
     int rxIfNum = 1, rxIfDen = 12;
     int txIfNum = 1, txIfDen = 12;
@@ -72,10 +73,14 @@ void CIO::initInt()
     m_dudc = new FDUDC(resampNum, resampDen, rxIfNum, rxIfDen, txIfNum, txIfDen, 11, 0.5f);
     double samplerate = 24000.0 * (double)resampDen / (double)resampNum;
 
+    // Compensate for delay from device buffers and resampler filters
+    // by delaying control flags by the same amount.
+    m_controlDelay = new CDelayBuffer<uint8_t>(blockSize * latencyBlocks * resampNum / resampDen + 11, 0);
+
 #if defined(LINUX_IO_FILE)
     m_txFile = new std::ofstream("mmdvm_tx_iq_output.raw");
 #elif defined(LINUX_IO_SOAPYSDR)
-    m_latencyNs = (long long)std::round(1e9 / samplerate * (double)(blockSize * 3));
+    m_latencyNs = (long long)std::round(1e9 / samplerate * (double)(blockSize * latencyBlocks));
 
     SoapySDR::Kwargs device_args;
     SoapySDR::Kwargs rx_args;
@@ -119,7 +124,8 @@ void CIO::exitInt()
 void CIO::processIqBlock(std::vector<std::complex<float>> &buf)
 {
     m_dudc->process(buf, [this](std::complex<float> rx_iq_sample) {
-        const int32_t fm_deviation = 500000; // TODO
+        // Adjusted to have correct DMR deviation at TX level of 50%
+        const int32_t fm_deviation = 550000;
         const float tx_amplitude = 0.7f;
 
         std::complex<float> tx_iq_sample = { 0.0f, 0.0f };
@@ -139,8 +145,7 @@ void CIO::processIqBlock(std::vector<std::complex<float>> &buf)
         // Scale -pi...pi to 0...DC_OFFSET*2
         d = d * ((float)DC_OFFSET / (float)M_PI) + (float)DC_OFFSET;
 
-        // TODO: delay slot flags
-
+        fm_sample.control = m_controlDelay->process(fm_sample.control);
         fm_sample.sample = (uint16_t)d;
         m_rxBuffer.put(fm_sample);
         m_rssiBuffer.put(0U);

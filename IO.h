@@ -23,6 +23,7 @@
 #include "Globals.h"
 
 #include "RingBuffer.h"
+#include "DelayBuffer.h"
 
 #if defined(LINUX_IO_LIMESDR)
 #define LINUX_IO_SOAPYSDR
@@ -188,6 +189,7 @@ private:
   void exitInt();
   void processIqBlock(std::vector<std::complex<float>> &buf);
 
+  CDelayBuffer<uint8_t> *m_controlDelay;
   FDUDC *m_dudc;
   // Phase accumulator for FM modulator
   uint32_t m_phase;
