@@ -155,7 +155,9 @@ m_lockout(false)
 ,m_rxStream(NULL)
 ,m_txStream(NULL)
 ,m_latencyNs(0)
+,m_latencyBlocks(3)
 ,m_streamsOn(false)
+,m_timestamped(false)
 #endif
 #endif
 {

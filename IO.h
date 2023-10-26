@@ -25,7 +25,7 @@
 #include "RingBuffer.h"
 #include "DelayBuffer.h"
 
-#if defined(LINUX_IO_LIMESDR)
+#if defined(LINUX_IO_LIMESDR) || defined(LINUX_IO_SXXCVR)
 #define LINUX_IO_SOAPYSDR
 #endif
 
@@ -225,7 +225,9 @@ private:
   SoapySDR::Stream *m_txStream;
   // Difference from latest received timestamp to next transmitted timestamp
   long long m_latencyNs;
+  size_t m_latencyBlocks;
   bool m_streamsOn;
+  bool m_timestamped;
 #endif
 
 #endif

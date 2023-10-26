@@ -142,7 +142,9 @@
 // Use file I/O for signals
 // #define LINUX_IO_FILE
 // Use LimeSDR
-#define LINUX_IO_LIMESDR
+//#define LINUX_IO_LIMESDR
+// Use SXXCVR
+#define LINUX_IO_SXXCVR
 
 // Publish data for monitor program
 #define LINUX_MONITOR

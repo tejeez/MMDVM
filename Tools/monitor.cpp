@@ -3,6 +3,12 @@
 // Compile with:
 // g++ -o ../bin_linux/monitor monitor.cpp -Wall -Wextra -lzmq -lSDL2
 //
+// Can be also run on a different computer than the one running MMDVM
+// by tunneling monitor socket through ssh. Do something like:
+// ssh user@machine_running_mmdvm -L Remote_MMDVM_Monitor:/tmp/MMDVM_Monitor
+// And then on your local machine:
+// ../bin_linux/monitor "ipc://Remote_MMDVM_Monitor"
+//
 // Useful references:
 // https://github.com/aminosbh/basic-cpp-sdl-project/blob/master/src/main.cc
 // https://brettviren.github.io/cppzmq-tour/index.html
@@ -66,11 +72,15 @@ private:
     float scaling;
 };
 
-int main(void)
+int main(int argc, char *argv[])
 {
     const int win_width = 720, win_height = 600;
     zmq::socket_t sock(zmq_ctx, zmq::socket_type::sub);
-    sock.connect("ipc:///tmp/MMDVM_Monitor");
+    if (argc == 2) {
+        sock.connect(argv[1]);
+    } else {
+        sock.connect("ipc:///tmp/MMDVM_Monitor");
+    }
     sock.set(zmq::sockopt::subscribe, "FM");
     sock.set(zmq::sockopt::rcvtimeo, 50);
 
