@@ -144,6 +144,9 @@
 // Use LimeSDR
 #define LINUX_IO_LIMESDR
 
+// Publish data for monitor program
+#define LINUX_MONITOR
+
 #endif
 
 #endif

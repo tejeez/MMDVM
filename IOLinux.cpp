@@ -29,6 +29,10 @@
 
 static const uint16_t DC_OFFSET = 2048U;
 
+#if defined(LINUX_MONITOR)
+zmq::context_t m_zmqCtx;
+#endif
+
 void sighandler(int sig)
 {
     (void)sig;
@@ -54,6 +58,10 @@ void CIO::initInt()
 {
     LOGCONSOLE("Initializing I/O");
     setup_sighandler();
+
+#if defined(LINUX_MONITOR)
+    m_monitor.bind("ipc:///tmp/MMDVM_Monitor");
+#endif
 
     double rxFreq = 434.0e6, txFreq = 434.0e6;
 
@@ -123,18 +131,23 @@ void CIO::exitInt()
 
 void CIO::processIqBlock(std::vector<std::complex<float>> &buf)
 {
+#if defined(LINUX_MONITOR)
+    m_monitorFmBuf.clear();
+#endif
+
     m_dudc->process(buf, [this](std::complex<float> rx_iq_sample) {
         // Adjusted to have correct DMR deviation at TX level of 50%
         const int32_t fm_deviation = 550000;
         const float tx_amplitude = 0.7f;
 
         std::complex<float> tx_iq_sample = { 0.0f, 0.0f };
-        TSample fm_sample = { DC_OFFSET, MARK_NONE };
-        if (m_txBuffer.getData() >= 1) {
-            m_txBuffer.get(fm_sample);
+        TSample tx_fm_sample = { DC_OFFSET, MARK_NONE };
+        auto txBufData = m_txBuffer.getData();
+        if (txBufData >= 1) {
+            m_txBuffer.get(tx_fm_sample);
 
             // Modulate TX FM
-            m_phase += ((int32_t)fm_sample.sample - (int32_t)DC_OFFSET) * fm_deviation;
+            m_phase += ((int32_t)tx_fm_sample.sample - (int32_t)DC_OFFSET) * fm_deviation;
             float ph = m_phase * (float)(M_PI / 0x80000000UL);
             tx_iq_sample = std::polar(tx_amplitude, ph);
         }
@@ -145,12 +158,32 @@ void CIO::processIqBlock(std::vector<std::complex<float>> &buf)
         // Scale -pi...pi to 0...DC_OFFSET*2
         d = d * ((float)DC_OFFSET / (float)M_PI) + (float)DC_OFFSET;
 
-        fm_sample.control = m_controlDelay->process(fm_sample.control);
-        fm_sample.sample = (uint16_t)d;
-        m_rxBuffer.put(fm_sample);
-        m_rssiBuffer.put(0U);
+        TSample rx_fm_sample = {
+            .sample = (uint16_t)d,
+            .control = m_controlDelay->process(tx_fm_sample.control),
+        };
+        uint16_t rx_rssi = 0;
+        m_rxBuffer.put(rx_fm_sample);
+        m_rssiBuffer.put(rx_rssi);
+
+#if defined(LINUX_MONITOR)
+        m_monitorFmBuf.push_back((struct monitorFmMsg) {
+            .id        = { 'F', 'M' },
+            .rxSample  = rx_fm_sample.sample,
+            .rxControl = rx_fm_sample.control,
+            .rxRssi    = rx_rssi,
+            .txSample  = tx_fm_sample.sample,
+            .txControl = tx_fm_sample.control,
+            .txBufData = txBufData,
+        });
+#endif
+
         return tx_iq_sample;
     });
+
+#if defined(LINUX_MONITOR)
+    m_monitor.send(zmq::buffer(m_monitorFmBuf), zmq::send_flags::dontwait);
+#endif
 }
 
 void CIO::startInt()

@@ -59,7 +59,7 @@ CXXFLAGS=-c -Os -std=c++11 -fpermissive -ffunction-sections -fdata-sections -fno
 LDFLAGS=-Os -Wl,-Map=$(BINDIR)/mmdvm.map
 
 # Libraries
-LDFLAGS+=-lSoapySDR
+LDFLAGS+=-lSoapySDR -lzmq
 
 # Generate dependency information
 CFLAGS+=-MMD -MP -MF"$(@:%.o=%.d)"

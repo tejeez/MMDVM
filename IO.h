@@ -33,6 +33,19 @@
 #include "FDUDC.h"
 #endif
 
+#if defined(LINUX_MONITOR)
+#include <zmq.hpp>
+// The same ZeroMQ context can be used everywhere, so make it global.
+extern zmq::context_t m_zmqCtx;
+
+// Struct sent to monitor socket for FM baseband data
+struct monitorFmMsg {
+  char id[2]; // 'F', 'M'
+  uint16_t rxSample, rxControl, rxRssi;
+  uint16_t txSample, txControl, txBufData;
+};
+#endif
+
 #if defined(LINUX_IO_FILE)
 #include <iostream>
 #include <fstream>
@@ -197,6 +210,12 @@ private:
   std::complex<float> m_prev_rx_iq_sample;
 
   std::vector<std::complex<float>> m_buffer;
+
+#if defined(LINUX_MONITOR)
+  zmq::socket_t m_monitor;
+  std::vector<monitorFmMsg> m_monitorFmBuf;
+#endif
+
 #if defined(LINUX_IO_FILE)
   std::ofstream *m_txFile;
 #endif

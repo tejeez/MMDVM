@@ -144,6 +144,9 @@ m_lockout(false)
 #if defined(LINUX)
 ,m_phase(0)
 ,m_prev_rx_iq_sample({0.0f, 0.0f})
+#if defined(LINUX_MONITOR)
+,m_monitor(m_zmqCtx, zmq::socket_type::pub)
+#endif
 #if defined(LINUX_IO_FILE)
 ,m_txFile(NULL)
 #endif
