@@ -52,7 +52,8 @@ m_resampDen(resampDen),
 m_p(0),
 m_i(0),
 m_ddc_i(0),
-m_duc_i(0)
+m_duc_i(0),
+m_ducIn({0.0f, 0.0f})
 {
     size_t approxlen = (size_t)resampDen * (size_t)length;
     // Number of filter branches:
@@ -106,27 +107,24 @@ void FDUDC::process(
         m_p += m_resampNum;
         while (m_p >= m_resampDen) {
             m_p -= m_resampDen;
-            assert(m_p < m_resampNum);
+            //assert(m_p < m_resampNum);
 
             size_t p = (size_t)m_p;
-            // Window to the sample buffer
-            auto window = &m_in[m_i + 1];
-            std::complex<float> v = { 0.0f, 0.0f };
+            // Windows to sample buffers
+            auto windowIn  = &m_in [m_i + 1];
+            auto windowOut = &m_out[m_i + 1];
+            std::complex<float> ddcOut = { 0.0f, 0.0f };
+            // Do both resamplers in the same loop to make it a bit faster.
+            // This adds one sample of extra delay to DUC input.
             for (size_t i = 0; i < branchlen; i++) {
-                assert(p < m_taps.size());
-                v += window[i] * m_taps[p];
+                //assert(p < m_taps.size());
+                auto tap = m_taps[p];
+                ddcOut += windowIn[i] * tap;
+                windowOut[i] += m_ducIn * tap;
                 p += (size_t)m_resampNum;
             }
 
-            v = duc_scaling * process_sample(v);
-
-            p = (size_t)m_p;
-            window = &m_out[m_i + 1];
-            for (size_t i = 0; i < branchlen; i++) {
-                assert(p < m_taps.size());
-                window[i] += v * m_taps[p];
-                p += (size_t)m_resampNum;
-            }
+            m_ducIn = duc_scaling * process_sample(ddcOut);
         }
 
         sample = (m_out[m_i] + m_out[m_i + branchlen]) * m_duc_sine[m_duc_i];
@@ -140,19 +138,23 @@ void FDUDC::process(
 }
 
 // To compile a test program and run it:
-// g++ -o obj_linux/test_FDUDC FDUDC.cpp -Wall -Wextra -DTEST_FDUDC
-// ../testsignal --format=cf32le --samples=1000000 | obj_linux/test_FDUDC > test_duc_output.raw
+// g++ -o obj_linux/test_FDUDC FDUDC.cpp -Os -Wall -Wextra -DTEST_FDUDC
+// ../testsignal --format=cf32le --samples=1000000 | obj_linux/test_FDUDC test_ddc_output.raw > test_duc_output.raw
 // Where ../testsignal is a frequency sweep generator from
 // https://github.com/tejeez/spektri/
+// To only test CPU use without writing output files:
+// g++ -o obj_linux/test_FDUDC FDUDC.cpp -Wall -Wextra -DTEST_FDUDC && dd if=/dev/zero bs=4000 count=1000 | (time obj_linux/test_FDUDC) > /dev/null
 #if defined(TEST_FDUDC)
 #include <iostream>
 #include <fstream>
 
 #define TEST_BLOCK_LEN 256
 
-int main(void)
+int main(int argc, char *argv[])
 {
-    auto ddc_out_file = new std::ofstream("test_ddc_output.raw");
+    std::ofstream *ddc_out_file = NULL;
+    if (argc == 2)
+        ddc_out_file = new std::ofstream(argv[1]);
     FDUDC dudc(4, 25, 1, 24, 1, 24);
     std::vector<std::complex<float>> buf(TEST_BLOCK_LEN);
     for (;;) {
@@ -160,7 +162,8 @@ int main(void)
         if (std::cin.fail())
             break;
         dudc.process(buf, [ddc_out_file](std::complex<float> s) {
-            ddc_out_file->write((char*)&s, sizeof(s));
+            if (ddc_out_file != NULL)
+                ddc_out_file->write((char*)&s, sizeof(s));
             // Test by feeding the DDC output into DUC input
             return s;
         });

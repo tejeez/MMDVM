@@ -47,6 +47,8 @@ private:
     unsigned m_ddc_i;
     // Index to m_duc_sine
     unsigned m_duc_i;
+    // Input sample to DUC
+    std::complex<float> m_ducIn;
     // Polyphase filter taps
     std::vector<float> m_taps;
     // Input buffer for DDC resampler

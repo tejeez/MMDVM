@@ -67,6 +67,9 @@ void CIO::initInt()
     double rxFreq = 434.0e6, txFreq = 434.0e6;
 
     size_t blockSize = 96;
+    // Additional round-trip delay from hardware in I/Q samples
+    size_t iqHwDelay = 0;
+    unsigned resampLen = 11;
     int resampNum = 1, resampDen = 1;
     int rxIfNum = 1, rxIfDen = 12;
     int txIfNum = 1, txIfDen = 12;
@@ -75,21 +78,23 @@ void CIO::initInt()
     resampNum = 2;
     resampDen = 25;
     blockSize = 1024;
+    iqHwDelay = 100; // TODO
     m_timestamped = true;
 #endif
 #if defined(LINUX_IO_SXXCVR)
     resampNum = 4;
     resampDen = 25;
     blockSize = 512;
+    iqHwDelay = 10;
     m_timestamped = false;
 #endif
 
     m_buffer.resize(blockSize);
-    m_dudc = new FDUDC(resampNum, resampDen, rxIfNum, rxIfDen, txIfNum, txIfDen, 11, 0.5f);
+    m_dudc = new FDUDC(resampNum, resampDen, rxIfNum, rxIfDen, txIfNum, txIfDen, resampLen, 0.5f);
     double samplerate = 24000.0 * (double)resampDen / (double)resampNum;
 
     // Round-trip delay from TX to RX in FM samples
-    size_t latencyFmSamples = blockSize * m_latencyBlocks * resampNum / resampDen + 11;
+    size_t latencyFmSamples = (blockSize * m_latencyBlocks + iqHwDelay) * resampNum / resampDen + resampLen;
     // Compensate for delay from device buffers and resampler filters
     // by delaying control flags by the same amount.
     m_delayedTx = new CDelayBuffer<TSample>(latencyFmSamples, { 0, 0 });
