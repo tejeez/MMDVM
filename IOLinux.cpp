@@ -88,9 +88,11 @@ void CIO::initInt()
     m_dudc = new FDUDC(resampNum, resampDen, rxIfNum, rxIfDen, txIfNum, txIfDen, 11, 0.5f);
     double samplerate = 24000.0 * (double)resampDen / (double)resampNum;
 
+    // Round-trip delay from TX to RX in FM samples
+    size_t latencyFmSamples = blockSize * m_latencyBlocks * resampNum / resampDen + 11;
     // Compensate for delay from device buffers and resampler filters
     // by delaying control flags by the same amount.
-    m_controlDelay = new CDelayBuffer<uint8_t>(blockSize * m_latencyBlocks * resampNum / resampDen + 11, 0);
+    m_delayedTx = new CDelayBuffer<TSample>(latencyFmSamples, { 0, 0 });
 
 #if defined(LINUX_IO_FILE)
     m_txFile = new std::ofstream("mmdvm_tx_iq_output.raw");
@@ -112,7 +114,8 @@ void CIO::initInt()
     tx_args["link"] = "1";
 #endif
 
-    if (sched_setscheduler(0, SCHED_RR, &(struct sched_param){20}) < 0) {
+    struct sched_param schedParam = { 20 };
+    if (sched_setscheduler(0, SCHED_RR, &schedParam) < 0) {
         LOGCONSOLE("Failed to set real-time scheduling policy");
     }
     try {
@@ -175,9 +178,11 @@ void CIO::processIqBlock(std::vector<std::complex<float>> &buf)
         // Scale -pi...pi to 0...DC_OFFSET*2
         d = d * ((float)DC_OFFSET / (float)M_PI) + (float)DC_OFFSET;
 
+        tx_fm_sample = m_delayedTx->process(tx_fm_sample);
+
         TSample rx_fm_sample = {
             .sample = (uint16_t)d,
-            .control = m_controlDelay->process(tx_fm_sample.control),
+            .control = tx_fm_sample.control,
         };
         uint16_t rx_rssi = 0;
         m_rxBuffer.put(rx_fm_sample);

@@ -1,11 +1,11 @@
 // Monitor program to show received and transmitted FM waveforms.
 //
 // Compile with:
-// g++ -o ../bin_linux/monitor monitor.cpp -Wall -Wextra -lzmq -lSDL2
+// g++ -o ../bin_linux/monitor monitor.cpp -Wall -Wextra -O2 -lzmq -lSDL2
 //
 // Can be also run on a different computer than the one running MMDVM
 // by tunneling monitor socket through ssh. Do something like:
-// ssh user@machine_running_mmdvm -L Remote_MMDVM_Monitor:/tmp/MMDVM_Monitor
+// ssh user@machine_running_mmdvm -L ./Remote_MMDVM_Monitor:/tmp/MMDVM_Monitor
 // And then on your local machine:
 // ../bin_linux/monitor "ipc://Remote_MMDVM_Monitor"
 //
@@ -29,7 +29,8 @@ zmq::context_t zmq_ctx;
 class Plotter {
 public:
     Plotter(SDL_Rect area, int fullscale):
-    area(area)
+    area(area),
+    prev_x(0)
     {
         scaling = 1.0f / (float)fullscale;
     }
@@ -39,9 +40,9 @@ public:
         if (flag == 0) {
             SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, 0xFF);
         } else if (flag == 4) {
-            SDL_SetRenderDrawColor(rend, 0xFF, 0x00, 0x00, 0xFF);
+            SDL_SetRenderDrawColor(rend, 0x80, 0x00, 0x00, 0xFF);
         } else {
-            SDL_SetRenderDrawColor(rend, 0x00, 0xFF, 0x00, 0xFF);
+            SDL_SetRenderDrawColor(rend, 0x00, 0x80, 0x00, 0xFF);
         }
         if (flag != 0 || x != prev_x) {
             SDL_Rect erase_rect = {
@@ -128,12 +129,18 @@ int main(int argc, char *argv[])
             size_t n = msg.size() / sizeof(monitorFmMsg);
             struct monitorFmMsg *samples = (struct monitorFmMsg*)msg.data();
             for (size_t i = 0; i < n; i++) {
+                auto *sample = &samples[i];
+
+                // Start display from beginning of first slot
+                if (x_counter != 0 && sample->txControl == 4) {
+                    x_counter = 0;
+                    SDL_RenderPresent(rend);
+                }
                 if (x_counter == 0) {
-                    SDL_SetRenderDrawColor(rend, 0x30, 0x40, 0x20, 0xFF);
+                    SDL_SetRenderDrawColor(rend, 0x20, 0x20, 0x20, 0xFF);
                     SDL_RenderClear(rend);
                 }
 
-                auto *sample = &samples[i];
                 int plot_x = x_counter / samples_per_pixel;
 
                 plot_rx_rssi.plot(rend, plot_x, sample->rxControl, sample->rxRssi);

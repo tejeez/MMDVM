@@ -202,7 +202,7 @@ private:
   void exitInt();
   void processIqBlock(std::vector<std::complex<float>> &buf);
 
-  CDelayBuffer<uint8_t> *m_controlDelay;
+  CDelayBuffer<TSample> *m_delayedTx;
   FDUDC *m_dudc;
   // Phase accumulator for FM modulator
   uint32_t m_phase;
