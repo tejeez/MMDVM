@@ -86,7 +86,7 @@ void CIO::initInt()
     resampDen = 25;
     blockSize = 512;
     iqHwDelay = 10;
-    m_timestamped = false;
+    m_timestamped = true;
 #endif
 
     m_buffer.resize(blockSize);
@@ -115,8 +115,8 @@ void CIO::initInt()
 #endif
 #if defined(LINUX_IO_SXXCVR)
     device_args["driver"] = "sx";
-    rx_args["link"] = "1";
-    tx_args["link"] = "1";
+    /*rx_args["link"] = "1";
+    tx_args["link"] = "1";*/
 #endif
 
     struct sched_param schedParam = { 20 };
