@@ -33,3 +33,45 @@ Portions of the ARM support code include the following copyright:
    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
    POSSIBILITY OF SUCH DAMAGE.
+
+# Linux port
+
+MMDVM firmware traditionally runs on a microcontroller and interfaces with an
+FM radio transceiver through A/D and D/A converters.
+This repository adds support for running the MMDVM "firmware" part on a Linux
+system with software defined radios.
+
+When running on a microcontroller, MMDVM communicates with
+[MMDVMHost](https://github.com/g4klx/MMDVMHost),
+running on a separate Linux or Windows system, through a serial port.
+In case of the Linux port, MMDVMHost runs on the same Linux system as another
+process.
+The serial port is replaced with a pseudoterminal which works like a virtual
+serial port between two processes.
+
+Using a pseudoterminal needs a small modification to MMDVMHost code.
+Open `MMDVMHost.cpp`, find the line:
+```
+                port = new CUARTController(uartPort, uartSpeed, true);
+```
+and change it to:
+```
+                port = new CUARTController(uartPort, uartSpeed, false);
+```
+
+In the `MMDVM.ini` configuration file, search for a line beginning with
+`UARTPort` and change the line to:
+```
+UARTPort=/tmp/MMDVM_PTS
+```
+
+## Compiling
+
+First edit Config.h if needed. Then, to compile the Linux port:
+```
+git submodule init
+git submodule update
+make -f Makefile.Linux -j4
+```
+
+Installing some dependencies may be needed. TODO: document them.
