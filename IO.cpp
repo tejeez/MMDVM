@@ -82,10 +82,14 @@ CIO::CIO() :
 m_started(false),
 
 m_rxBuffer(RX_RINGBUFFER_SIZE),
-m_txBuffer(TX_RINGBUFFER_SIZE),
 #if defined(LINUX)
+m_lastRxSampleProcessed(0),
+m_txSampleCounter(0),
+m_txPacketLen(0),
 m_rxFd(-1),
+m_txFd(-1),
 #else
+m_txBuffer(TX_RINGBUFFER_SIZE),
 m_rssiBuffer(RX_RINGBUFFER_SIZE),
 #endif
 
@@ -147,7 +151,7 @@ m_dacOverflow(0U),
 m_watchdog(0U),
 m_lockout(false)
 #if defined(LINUX)
-,m_controlBuffer({0})
+,m_controlBuffer{0}
 #endif
 {
 #if defined(USE_DCBLOCKER)
@@ -347,6 +351,26 @@ void CIO::getRxSampleAndRssiInt(TSample& sample, uint16_t& rssi)
   m_rxBuffer.get(sample);
   m_rssiBuffer.get(rssi);
 }
+
+void CIO::putTxSampleInt(TSample sample)
+{
+  m_txBuffer.put(sample);
+}
+
+uint16_t CIO::getSpace() const
+{
+  return m_txBuffer.getSpace();
+}
+
+bool CIO::hasTXOverflow()
+{
+  return m_txBuffer.hasOverflowed();
+}
+
+bool CIO::hasEmptyTXBufferInt()
+{
+  return m_txBuffer.getData() == 0U;
+}
 #endif
 
 void CIO::process()
@@ -388,7 +412,7 @@ void CIO::process()
     m_lockout = getCOSInt();
 
   // Switch off the transmitter if needed
-  if (m_txBuffer.getData() == 0U && m_tx) {
+  if (hasEmptyTXBufferInt() && m_tx) {
     m_tx = false;
     setPTTInt(m_pttInvert ? true : false);
     DEBUG1("TX OFF");
@@ -734,15 +758,10 @@ void CIO::write(MMDVM_STATE mode, q15_t* samples, uint16_t length, const uint8_t
       m_dacOverflow++;
 
     if (control == NULL)
-      m_txBuffer.put({res3, MARK_NONE});
+      putTxSampleInt({res3, MARK_NONE});
     else
-      m_txBuffer.put({res3, control[i]});
+      putTxSampleInt({res3, control[i]});
   }
-}
-
-uint16_t CIO::getSpace() const
-{
-  return m_txBuffer.getSpace();
 }
 
 void CIO::setDecode(bool dcd)
@@ -834,11 +853,6 @@ void CIO::getOverflow(bool& adcOverflow, bool& dacOverflow)
 
   m_adcOverflow = 0U;
   m_dacOverflow = 0U;
-}
-
-bool CIO::hasTXOverflow()
-{
-  return m_txBuffer.hasOverflowed();
 }
 
 bool CIO::hasRXOverflow()

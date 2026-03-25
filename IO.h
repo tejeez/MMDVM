@@ -87,10 +87,11 @@ private:
 
 #if defined(LINUX)
   CRingBuffer<TRxSample> m_rxBuffer;
-  // TODO: do not use a ring buffer for TX,
-  // append TX samples to a packet instead.
-  CRingBuffer<TSample>   m_txBuffer;
+  uint64_t               m_lastRxSampleProcessed;
+  uint64_t               m_txSampleCounter;
+  ssize_t                m_txPacketLen;
   int                    m_rxFd;
+  int                    m_txFd;
 #else
   CRingBuffer<TSample>  m_rxBuffer;
   CRingBuffer<TSample>  m_txBuffer;
@@ -171,7 +172,9 @@ private:
 
 #if defined(LINUX)
 #define CONTROL_BUFFER_SIZE 2048U
+#define MAX_TX_PACKET_SIZE 8192U
   uint64_t m_controlBuffer[CONTROL_BUFFER_SIZE];
+  uint8_t  m_txPacket[MAX_TX_PACKET_SIZE];
 #endif
 
   // Hardware specific routines
@@ -196,6 +199,8 @@ private:
   void delayInt(unsigned int dly);
 
   void getRxSampleAndRssiInt(TSample& sample, uint16_t& rssi);
+  void putTxSampleInt(TSample sample);
+  bool hasEmptyTXBufferInt();
 };
 
 #endif
