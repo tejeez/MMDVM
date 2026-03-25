@@ -28,6 +28,17 @@ struct TSample {
   volatile uint8_t control;
 };
 
+#if defined(LINUX)
+struct TRxSample {
+  // Store sample counter values in RX buffer
+  uint64_t count;
+  uint16_t sample;
+  uint16_t rssi;
+  // Control flags are handled in a different way
+  // and not stored in the same RX buffer.
+};
+#endif
+
 class CIO {
 public:
   CIO();
@@ -64,12 +75,27 @@ public:
 
   void selfTest();
 
+#if defined(LINUX)
+  int getRxFd();
+  uint16_t getRxAvailable() const;
+  void receive();
+  void transmit();
+#endif
+
 private:
   bool                  m_started;
 
+#if defined(LINUX)
+  CRingBuffer<TRxSample> m_rxBuffer;
+  // TODO: do not use a ring buffer for TX,
+  // append TX samples to a packet instead.
+  CRingBuffer<TSample>   m_txBuffer;
+  int                    m_rxFd;
+#else
   CRingBuffer<TSample>  m_rxBuffer;
   CRingBuffer<TSample>  m_txBuffer;
   CRingBuffer<uint16_t> m_rssiBuffer;
+#endif
 
 #if defined(USE_DCBLOCKER)
   arm_biquad_casd_df1_inst_q31 m_dcFilter;
@@ -143,6 +169,11 @@ private:
 
   bool                 m_lockout;
 
+#if defined(LINUX)
+#define CONTROL_BUFFER_SIZE 2048U
+  uint64_t m_controlBuffer[CONTROL_BUFFER_SIZE];
+#endif
+
   // Hardware specific routines
   void initInt();
   void startInt();
@@ -163,6 +194,8 @@ private:
   void setFMInt(bool on);
   
   void delayInt(unsigned int dly);
+
+  void getRxSampleAndRssiInt(TSample& sample, uint16_t& rssi);
 };
 
 #endif

@@ -24,6 +24,7 @@
 #include "Config.h"
 #include "Globals.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <poll.h>
 
@@ -117,7 +118,7 @@ static void setup()
   serial.start();
 }
 
-static void processingLoop()
+static void processRxTx()
 {
   io.process();
 
@@ -210,30 +211,50 @@ static void processingLoop()
     cwIdTX.process();
 }
 
-static void processRxTx()
+static void processAllRxTx()
 {
-  // TODO: read RX signal input into MMDVM buffer,
-  // repeat processingLoop as long it has something to do
-  // and send TX signal from MMDVM buffer.
-  // Maybe also implement TX buffer a bit differently.
-  processingLoop();
+  io.receive();
+
+  // Process RX samples and produce TX samples
+  // as long as there if something to do.
+  // Stop once no more RX samples get consumed
+  // and no more TX samples get produced.
+  uint16_t prevRxAvailable, prevTxSpace;
+  uint16_t rxAvailable = io.getRxAvailable();
+  uint16_t txSpace = io.getSpace();
+  do {
+    prevRxAvailable = rxAvailable;
+    prevTxSpace = txSpace;
+    processRxTx();
+    txSpace = io.getSpace();
+    rxAvailable = io.getRxAvailable();
+  } while (rxAvailable != prevRxAvailable || txSpace != prevTxSpace);
+
+  io.transmit();
 }
 
 static void loop()
 {
-  // TODO: also poll for RX signal input
-  struct pollfd fds[1] = {{
+  // Wait until there is data available
+  // on serial port or RX socket.
+  struct pollfd fds[2] = {{
     .fd = serial1.get_fd(),
+    .events = POLLIN
+  }, {
+    .fd = io.getRxFd(),
     .events = POLLIN
   }};
 
-  if (::poll(fds, 1, 1000) > 0) {
+  if (::poll(fds, 2, 1000) >= 0) {
     if (fds[0].revents & POLLIN) {
       serial1.receive();
       serial.process();
     }
-
-    // TODO: If RX signal input is available, call processRxTx()
+    if (fds[1].revents & POLLIN) {
+      processAllRxTx();
+    }
+  } else {
+    ::fprintf(stderr, "Poll failed: %s", ::strerror(errno));
   }
   serial1.transmit();
 }

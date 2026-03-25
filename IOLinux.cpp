@@ -25,15 +25,56 @@
 #include <stdio.h>
 #include <unistd.h>
 
+int CIO::getRxFd()
+{
+    return m_rxFd;
+}
+
 void CIO::initInt()
 {
-    // TODO
+  // TODO
 }
 
 void CIO::startInt()
 {
-    // TODO
+  // TODO
 }
+
+void CIO::receive()
+{
+  // TODO: receive packet of RX samples from m_rxFd
+  // and put them to m_rxBuffer.
+}
+
+void CIO::transmit()
+{
+  // TODO
+}
+
+uint16_t CIO::getRxAvailable() const
+{
+  return m_rxBuffer.getData();
+}
+
+void CIO::getRxSampleAndRssiInt(TSample& sample, uint16_t& rssi)
+{
+  TRxSample bufferSample = { 0U, 0U, 0U };
+  if (m_rxBuffer.get(bufferSample)) {
+
+    sample.sample = bufferSample.sample;
+    rssi = bufferSample.rssi;
+
+    // Get control flags from a separate buffer based on sample count
+    uint64_t c = m_controlBuffer[bufferSample.count & (CONTROL_BUFFER_SIZE - 1)];
+    if ((c & ~0xFFULL) == (bufferSample.count & ~0xFFULL)) {
+      sample.control = c & 0xFFU;
+    } else {
+      sample.control = MARK_NONE;
+    }
+  }
+}
+
+
 
 bool CIO::getCOSInt()
 {

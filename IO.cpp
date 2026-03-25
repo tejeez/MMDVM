@@ -80,9 +80,15 @@ const uint16_t DC_OFFSET = 2048U;
 
 CIO::CIO() :
 m_started(false),
+
 m_rxBuffer(RX_RINGBUFFER_SIZE),
 m_txBuffer(TX_RINGBUFFER_SIZE),
+#if defined(LINUX)
+m_rxFd(-1),
+#else
 m_rssiBuffer(RX_RINGBUFFER_SIZE),
+#endif
+
 #if defined(USE_DCBLOCKER)
 m_dcFilter(),
 m_dcState(),
@@ -140,6 +146,9 @@ m_adcOverflow(0U),
 m_dacOverflow(0U),
 m_watchdog(0U),
 m_lockout(false)
+#if defined(LINUX)
+,m_controlBuffer({0})
+#endif
 {
 #if defined(USE_DCBLOCKER)
   ::memset(m_dcState, 0x00U, 4U * sizeof(q31_t));
@@ -332,6 +341,14 @@ void CIO::start()
   setMode(STATE_IDLE);
 }
 
+#if !defined(LINUX)
+void CIO::getRxSampleAndRssiInt(TSample& sample, uint16_t& rssi)
+{
+  m_rxBuffer.get(sample);
+  m_rssiBuffer.get(rssi);
+}
+#endif
+
 void CIO::process()
 {
   m_ledCount++;
@@ -384,9 +401,8 @@ void CIO::process()
 
     for (uint16_t i = 0U; i < RX_BLOCK_SIZE; i++) {
       TSample sample;
-      m_rxBuffer.get(sample);
+      getRxSampleAndRssiInt(sample, rssi[i]);
       control[i] = sample.control;
-      m_rssiBuffer.get(rssi[i]);
 
       // Detect ADC overflow
       if (m_detect && (sample.sample == 0U || sample.sample == 4095U))
