@@ -24,8 +24,7 @@
 #include "Config.h"
 #include "Globals.h"
 
-#include <errno.h>
-#include <stdio.h>
+#include <cstdio>
 #include <poll.h>
 
 // Global variables
@@ -254,7 +253,7 @@ static void loop()
       processAllRxTx();
     }
   } else {
-    ::fprintf(stderr, "Poll failed: %s", ::strerror(errno));
+    ::perror("\nPoll failed");
   }
   serial1.transmit();
 }

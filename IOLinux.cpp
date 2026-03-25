@@ -23,17 +23,63 @@
 #include "IO.h"
 
 #include <cassert>
+#include <cerrno>
 #include <cstdio>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 int CIO::getRxFd()
 {
   return m_rxFd;
 }
 
+static int openSocket(const char *path, bool bind)
+{
+  int fd = ::socket(PF_UNIX, SOCK_DGRAM, 0);
+  if (fd < 0) {
+    ::perror("\nFailed to create socket");
+    return fd;
+  }
+
+  struct sockaddr_un addr = {
+    .sun_family = AF_UNIX
+  };
+  ::strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
+
+  if (bind) {
+    // Try to remove the socket if it already exists
+    (void)::unlink(addr.sun_path);
+
+    int ret = ::bind(fd, (const struct sockaddr *)&addr, sizeof(addr));
+    if (ret < 0) {
+      ::fprintf(stderr, "\nBinding to %s failed: %s\n", addr.sun_path, ::strerror(errno));
+      close(fd);
+      return ret;
+    } else {
+      ::fprintf(stderr, "\nBound to %s\n", addr.sun_path);
+    }
+  } else {
+    int ret = ::connect(fd, (const struct sockaddr *)&addr, sizeof(addr));
+    if (ret < 0) {
+      ::fprintf(stderr, "\nConnecting to %s failed: %s\n", addr.sun_path, ::strerror(errno));
+      close(fd);
+      return ret;
+    } else {
+      ::fprintf(stderr, "\nConnected to %s\n", addr.sun_path);
+    }
+  }
+
+  return fd;
+}
+
 void CIO::initInt()
 {
-  // TODO
+  m_rxFd = openSocket(RX_SOCKET_PATH, RX_SOCKET_BIND);
+  m_txFd = openSocket(TX_SOCKET_PATH, TX_SOCKET_BIND);
+  if (m_rxFd < 0 || m_txFd < 0) {
+    exit(1);
+  }
 }
 
 void CIO::startInt()
@@ -47,7 +93,12 @@ void CIO::receive()
   uint8_t packet[MAX_RX_PACKET_SIZE];
 
   ssize_t packetLen = ::read(m_rxFd, packet, MAX_RX_PACKET_SIZE);
+  if (packetLen < 0) {
+    perror("\nError reading from RX sample socket");
+    return;
+  }
   if (packetLen < 16) {
+    // Ignore invalid packet
     return;
   }
 
@@ -71,9 +122,14 @@ void CIO::receive()
 void CIO::transmit()
 {
   ssize_t ret = ::write(m_txFd, m_txPacket, m_txPacketLen);
-  if (ret > 0) {
-    m_txPacketLen = 0;
+  if (ret < 0) {
+    perror("\nError writing to TX sample socket");
+    return;
   }
+  if (ret != m_txPacketLen) {
+    fprintf(stderr, "\nWarning: wrote only %d out of %d bytes to TX sample socket", ret, m_txPacketLen);
+  }
+  m_txPacketLen = 0;
 }
 
 uint16_t CIO::getRxAvailable() const

@@ -125,5 +125,20 @@
 // Use the D-Star and YSF LEDs for FM
 #define USE_ALTERNATE_FM_LEDS
 
+// Path of virtual serial port to communicate with MMDVMHost (Linux only)
+#define HOST_PTS_PATH "/tmp/MMDVM_PTS"
+
+// Path of socket to receive samples from (Linux only)
+#define RX_SOCKET_PATH "/tmp/MMDVM_RX"
+
+// Path of socket to transmit samples into (Linux only)
+#define TX_SOCKET_PATH "/tmp/MMDVM_TX"
+
+// True to bind socket to RX_SOCKET_PATH, false to connect into it
+#define RX_SOCKET_BIND true
+
+// True to bind socket to TX_SOCKET_PATH, false to connect into it
+#define TX_SOCKET_BIND true
+
 #endif
 

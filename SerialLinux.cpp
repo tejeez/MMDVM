@@ -24,6 +24,11 @@
 // Based on Patrick Maier's code
 // https://github.com/maierp/MMDVMSdr/blob/master/SerialPort.cpp
 
+#include "Config.h"
+#include "Globals.h"
+#include "SerialPort.h"
+#include "SerialLinux.h"
+
 #include <cassert>
 #include <cerrno>
 #include <cstdio>
@@ -33,13 +38,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#include "Config.h"
-#include "Globals.h"
-#include "SerialPort.h"
-#include "SerialLinux.h"
-
 #define BAUDRATE B460800
-#define SERIAL_DEVICE_FILE "/tmp/MMDVM_PTS"
 
 SerialLinux serial1;
 
@@ -61,7 +60,7 @@ void SerialLinux::begin(const char *symlink_path)
   // Create virtual serial port
   m_fd = ::open("/dev/ptmx", O_RDWR | O_NOCTTY | O_NONBLOCK);
   if (m_fd < 0) {
-    ::fprintf(stderr, "\nFailed to open /dev/ptmx: %s\n", ::strerror(errno));
+    ::perror("\nFailed to open /dev/ptmx");
     exit(1);
     return;
   }
@@ -69,14 +68,14 @@ void SerialLinux::begin(const char *symlink_path)
   ::unlockpt(m_fd);
   char* pts_name = ::ptsname(m_fd);
   if (pts_name == NULL) {
-    ::fprintf(stderr, "\nFailed to get pseudoterminal name\n");
+    ::perror("\nFailed to get pseudoterminal name");
     ::exit(1);
     return;
   }
   ::fprintf(stderr, "\nPseudoterminal name: %s\n", pts_name);
 
   // Try to remove the symlink if it already exists
-  (void)::remove(symlink_path);
+  (void)::unlink(symlink_path);
   // Create symlink to virtual serial port
   if (::symlink(pts_name, symlink_path) < 0) {
     ::fprintf(stderr, "Failed to create pseudoterminal symlink at %s: %s\n", symlink_path, ::strerror(errno));
@@ -124,7 +123,7 @@ void SerialLinux::receive()
   if (ret >= 0) {
     m_rxBufferDataLen = ret;
   } else {
-    ::fprintf(stderr, "\nError reading from pseudoterminal: %s\n", ::strerror(errno));
+    ::perror("\nError reading from pseudoterminal\n");
     return;
   }
 }
@@ -166,7 +165,7 @@ void SerialLinux::transmit()
       data += ret;
       length -= ret;
     } else {
-      ::fprintf(stderr, "\nError writing to pseudoterminal: %s\n", ::strerror(errno));
+      ::perror("\nError writing to pseudoterminal");
       return;
     }
   }
@@ -179,7 +178,7 @@ void CSerialPort::beginInt(uint8_t n, int speed)
   // The repeater port (n=3) could be connected to a real serial port
   // when needed but that is not a critical feature for now.
   if (n == 1) {
-    serial1.begin(SERIAL_DEVICE_FILE);
+    serial1.begin(HOST_PTS_PATH);
   }
 }
 
