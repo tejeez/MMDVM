@@ -80,8 +80,8 @@ const uint16_t DC_OFFSET = 2048U;
 
 CIO::CIO() :
 m_started(false),
-
 m_rxBuffer(RX_RINGBUFFER_SIZE),
+
 #if defined(LINUX)
 m_lastRxSampleProcessed(0),
 m_txSampleCounter(0),
@@ -355,16 +355,6 @@ void CIO::getRxSampleAndRssiInt(TSample& sample, uint16_t& rssi)
 void CIO::putTxSampleInt(TSample sample)
 {
   m_txBuffer.put(sample);
-}
-
-uint16_t CIO::getSpace() const
-{
-  return m_txBuffer.getSpace();
-}
-
-bool CIO::hasTXOverflow()
-{
-  return m_txBuffer.hasOverflowed();
 }
 
 bool CIO::hasEmptyTXBufferInt()
@@ -764,6 +754,13 @@ void CIO::write(MMDVM_STATE mode, q15_t* samples, uint16_t length, const uint8_t
   }
 }
 
+#if !defined(LINUX)
+uint16_t CIO::getSpace() const
+{
+  return m_txBuffer.getSpace();
+}
+#endif
+
 void CIO::setDecode(bool dcd)
 {
   if (dcd != m_dcd)
@@ -776,6 +773,13 @@ void CIO::setADCDetection(bool detect)
 {
   m_detect = detect;
 }
+
+#if !defined(LINUX)
+bool CIO::hasTXOverflow()
+{
+  return m_txBuffer.hasOverflowed();
+}
+#endif
 
 void CIO::setMode(MMDVM_STATE state)
 {

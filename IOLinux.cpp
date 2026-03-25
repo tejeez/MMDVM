@@ -28,7 +28,7 @@
 
 int CIO::getRxFd()
 {
-    return m_rxFd;
+  return m_rxFd;
 }
 
 void CIO::initInt()
@@ -174,59 +174,59 @@ bool CIO::hasEmptyTXBufferInt()
 
 bool CIO::getCOSInt()
 {
-    return false;
+  return false;
 }
 
 void CIO::delayInt(unsigned int dly)
 {
-    ::usleep(dly * 1000U);
+  ::usleep(dly * 1000U);
 }
 
 uint8_t CIO::getCPU() const
 {
-    return 3U;
+  return 3U;
 }
 
 void CIO::getUDID(uint8_t* buffer)
 {
-    ::memset(buffer, 0, 16U);
+  ::memset(buffer, 0, 16U);
 }
 
 
 struct OutputPins {
-    bool LED, PTT, COS;
-    bool DStar, DMR, YSF, P25, NXDN, POCSAG, M17, FM;
+  bool LED, PTT, COS;
+  bool DStar, DMR, YSF, P25, NXDN, POCSAG, M17, FM;
 };
 struct OutputPins m_outputPins = {};
 
 #define PRINT_PIN(name)\
-    if (m_outputPins.name) {\
-        ::fprintf(stderr, "\033[7m" #name "\033[0m ");\
-    } else {\
-        ::fprintf(stderr, "\033[2m" #name "\033[0m ");\
-    }\
+  if (m_outputPins.name) {\
+    ::fprintf(stderr, "\033[7m" #name "\033[0m ");\
+  } else {\
+    ::fprintf(stderr, "\033[2m" #name "\033[0m ");\
+  }
 
 static void printOutputPins(void)
 {
-    ::fprintf(stderr, "\r");
-    PRINT_PIN(LED)
-    PRINT_PIN(PTT)
-    PRINT_PIN(COS)
+  ::fprintf(stderr, "\r");
+  PRINT_PIN(LED)
+  PRINT_PIN(PTT)
+  PRINT_PIN(COS)
 
-    PRINT_PIN(DStar)
-    PRINT_PIN(DMR)
-    PRINT_PIN(YSF)
-    PRINT_PIN(P25)
-    PRINT_PIN(NXDN)
-    PRINT_PIN(POCSAG)
-    PRINT_PIN(M17)
-    PRINT_PIN(FM)
+  PRINT_PIN(DStar)
+  PRINT_PIN(DMR)
+  PRINT_PIN(YSF)
+  PRINT_PIN(P25)
+  PRINT_PIN(NXDN)
+  PRINT_PIN(POCSAG)
+  PRINT_PIN(M17)
+  PRINT_PIN(FM)
 }
 
 #define CIO_SET_PIN(name)\
 void CIO::set ## name ## Int(bool on) {\
-    m_outputPins.name = on;\
-    printOutputPins();\
+  m_outputPins.name = on;\
+  printOutputPins();\
 }
 
 CIO_SET_PIN(LED)

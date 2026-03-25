@@ -75,6 +75,7 @@ enum MMDVM_STATE {
   STATE_M17CAL    = 108
 };
 
+#include "SerialLinux.h"
 #include "SerialPort.h"
 #include "DMRIdleRX.h"
 #include "DMRDMORX.h"
@@ -107,8 +108,6 @@ enum MMDVM_STATE {
 #include "Debug.h"
 #include "IO.h"
 #include "FM.h"
-
-#include "SerialLinux.h"
 
 const uint8_t  MARK_SLOT1 = 0x08U;
 const uint8_t  MARK_SLOT2 = 0x04U;
@@ -144,6 +143,10 @@ extern bool m_dcd;
 
 extern CSerialPort serial;
 extern CIO io;
+
+#if defined(LINUX)
+extern SerialLinux serial1;
+#endif
 
 #if defined(MODE_DSTAR)
 extern CDStarRX dstarRX;
@@ -208,10 +211,6 @@ extern CAX25TX ax25TX;
 extern CCalRSSI calRSSI;
 
 extern CCWIdTX cwIdTX;
-
-#if defined(LINUX)
-extern SerialLinux serial1;
-#endif
 
 #endif
 

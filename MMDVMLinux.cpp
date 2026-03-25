@@ -238,7 +238,7 @@ static void loop()
   // Wait until there is data available
   // on serial port or RX socket.
   struct pollfd fds[2] = {{
-    .fd = serial1.get_fd(),
+    .fd = serial1.getFd(),
     .events = POLLIN
   }, {
     .fd = io.getRxFd(),

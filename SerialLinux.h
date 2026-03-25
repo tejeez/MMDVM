@@ -24,23 +24,23 @@
 
 class SerialLinux {
 public:
-    SerialLinux();
-    int get_fd();
-    void begin(const char *symlink_path);
-    void receive();
-    int availableForRead();
-    uint8_t read();
-    int availableForWrite();
-    void write(const uint8_t* data, uint16_t length);
-    void transmit();
+  SerialLinux();
+  int getFd();
+  void begin(const char *symlink_path);
+  void receive();
+  int availableForRead();
+  uint8_t read();
+  int availableForWrite();
+  void write(const uint8_t* data, uint16_t length);
+  void transmit();
 
 private:
-    int m_fd;
-    ssize_t m_rxBufferDataLen;
-    ssize_t m_rxBufferReadPos;
-    ssize_t m_txBufferDataLen;
-    uint8_t m_rxBuffer[SERIAL_LINUX_RX_BUFFER_SIZE];
-    uint8_t m_txBuffer[SERIAL_LINUX_TX_BUFFER_SIZE];
+  int m_fd;
+  ssize_t m_rxBufferDataLen;
+  ssize_t m_rxBufferReadPos;
+  ssize_t m_txBufferDataLen;
+  uint8_t m_rxBuffer[SERIAL_LINUX_RX_BUFFER_SIZE];
+  uint8_t m_txBuffer[SERIAL_LINUX_TX_BUFFER_SIZE];
 };
 
 #endif
