@@ -109,6 +109,7 @@ CCalRSSI calRSSI;
 
 CCWIdTX cwIdTX;
 
+CSerialLinux serial1;
 CSerialPort serial;
 CIO io;
 
@@ -215,7 +216,7 @@ static void processAllRxTx()
   io.receive();
 
   // Process RX samples and produce TX samples
-  // as long as there if something to do.
+  // as long as there is something to do.
   // Stop once no more RX samples get consumed
   // and no more TX samples get produced.
   uint16_t prevRxAvailable, prevTxSpace;

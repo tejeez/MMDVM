@@ -145,7 +145,7 @@ extern CSerialPort serial;
 extern CIO io;
 
 #if defined(LINUX)
-extern SerialLinux serial1;
+extern CSerialLinux serial1;
 #endif
 
 #if defined(MODE_DSTAR)

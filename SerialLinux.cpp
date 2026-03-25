@@ -40,9 +40,7 @@
 
 #define BAUDRATE B460800
 
-SerialLinux serial1;
-
-SerialLinux::SerialLinux():
+CSerialLinux::CSerialLinux():
   m_fd(-1),
   m_rxBufferDataLen(0),
   m_rxBufferReadPos(0),
@@ -50,18 +48,18 @@ SerialLinux::SerialLinux():
 {
 }
 
-int SerialLinux::getFd()
+int CSerialLinux::getFd()
 {
   return m_fd;
 }
 
-void SerialLinux::begin(const char *symlink_path)
+void CSerialLinux::begin(const char *symlink_path)
 {
   // Create virtual serial port
   m_fd = ::open("/dev/ptmx", O_RDWR | O_NOCTTY | O_NONBLOCK);
   if (m_fd < 0) {
     ::perror("\nFailed to open /dev/ptmx");
-    exit(1);
+    ::exit(1);
     return;
   }
   ::grantpt(m_fd);
@@ -103,7 +101,7 @@ void SerialLinux::begin(const char *symlink_path)
   ::tcsetattr(m_fd, TCSANOW, &newtio);
 }
 
-void SerialLinux::receive()
+void CSerialLinux::receive()
 {
   // Read bytes from virtual serial port to buffer.
 
@@ -128,12 +126,12 @@ void SerialLinux::receive()
   }
 }
 
-int SerialLinux::availableForRead()
+int CSerialLinux::availableForRead()
 {
   return m_rxBufferDataLen - m_rxBufferReadPos;
 }
 
-uint8_t SerialLinux::read()
+uint8_t CSerialLinux::read()
 {
   if (m_rxBufferReadPos < m_rxBufferDataLen) {
     return m_rxBuffer[m_rxBufferReadPos++];
@@ -142,19 +140,19 @@ uint8_t SerialLinux::read()
   }
 }
 
-int SerialLinux::availableForWrite()
+int CSerialLinux::availableForWrite()
 {
   return SERIAL_LINUX_TX_BUFFER_SIZE - m_txBufferDataLen;
 }
 
-void SerialLinux::write(const uint8_t* data, uint16_t length)
+void CSerialLinux::write(const uint8_t* data, uint16_t length)
 {
   assert(m_txBufferDataLen + length <= SERIAL_LINUX_TX_BUFFER_SIZE);
   memcpy(m_txBuffer + m_txBufferDataLen, data, length);
   m_txBufferDataLen += length;
 }
 
-void SerialLinux::transmit()
+void CSerialLinux::transmit()
 {
   const uint8_t *data = m_txBuffer;
   ssize_t length = m_txBufferDataLen;

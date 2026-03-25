@@ -54,7 +54,7 @@ static int openSocket(const char *path, bool bind)
     int ret = ::bind(fd, (const struct sockaddr *)&addr, sizeof(addr));
     if (ret < 0) {
       ::fprintf(stderr, "\nBinding to %s failed: %s\n", addr.sun_path, ::strerror(errno));
-      close(fd);
+      ::close(fd);
       return ret;
     } else {
       ::fprintf(stderr, "\nBound to %s\n", addr.sun_path);
@@ -63,7 +63,7 @@ static int openSocket(const char *path, bool bind)
     int ret = ::connect(fd, (const struct sockaddr *)&addr, sizeof(addr));
     if (ret < 0) {
       ::fprintf(stderr, "\nConnecting to %s failed: %s\n", addr.sun_path, ::strerror(errno));
-      close(fd);
+      ::close(fd);
       return ret;
     } else {
       ::fprintf(stderr, "\nConnected to %s\n", addr.sun_path);
@@ -78,7 +78,7 @@ void CIO::initInt()
   m_rxFd = openSocket(RX_SOCKET_PATH, RX_SOCKET_BIND);
   m_txFd = openSocket(TX_SOCKET_PATH, TX_SOCKET_BIND);
   if (m_rxFd < 0 || m_txFd < 0) {
-    exit(1);
+    ::exit(1);
   }
 }
 

@@ -22,9 +22,9 @@
 #define SERIAL_LINUX_RX_BUFFER_SIZE 0x200
 #define SERIAL_LINUX_TX_BUFFER_SIZE 0x200
 
-class SerialLinux {
+class CSerialLinux {
 public:
-  SerialLinux();
+  CSerialLinux();
   int getFd();
   void begin(const char *symlink_path);
   void receive();
@@ -35,10 +35,10 @@ public:
   void transmit();
 
 private:
-  int m_fd;
   ssize_t m_rxBufferDataLen;
   ssize_t m_rxBufferReadPos;
   ssize_t m_txBufferDataLen;
+  int m_fd;
   uint8_t m_rxBuffer[SERIAL_LINUX_RX_BUFFER_SIZE];
   uint8_t m_txBuffer[SERIAL_LINUX_TX_BUFFER_SIZE];
 };
