@@ -1,5 +1,7 @@
 *.o
 obj/
 bin/
+obj_linux/
+bin_linux/
 GitVersion.h
 build/

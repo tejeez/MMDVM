@@ -23,6 +23,7 @@
 #include "stm32f4xx.h"
 #elif defined(STM32F7XX)
 #include "stm32f7xx.h"
+#elif defined(LINUX)
 #else
 #include <Arduino.h>
 #undef PI //Undefine PI to get rid of annoying warning as it is also defined in arm_math.h.
@@ -34,6 +35,7 @@
 #define  ARM_MATH_CM7
 #elif defined(STM32F4XX) || defined(__MK20DX256__) || defined(__MK64FX512__) || defined(__MK66FX1M0__)
 #define  ARM_MATH_CM4
+#elif defined(LINUX)
 #else
 #error "Unknown processor type"
 #endif
@@ -105,6 +107,8 @@ enum MMDVM_STATE {
 #include "Debug.h"
 #include "IO.h"
 #include "FM.h"
+
+#include "SerialLinux.h"
 
 const uint8_t  MARK_SLOT1 = 0x08U;
 const uint8_t  MARK_SLOT2 = 0x04U;
@@ -204,6 +208,10 @@ extern CAX25TX ax25TX;
 extern CCalRSSI calRSSI;
 
 extern CCWIdTX cwIdTX;
+
+#if defined(LINUX)
+extern SerialLinux serial1;
+#endif
 
 #endif
 
