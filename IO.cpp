@@ -81,18 +81,16 @@ const uint16_t DC_OFFSET = 2048U;
 CIO::CIO() :
 m_started(false),
 m_rxBuffer(RX_RINGBUFFER_SIZE),
-
 #if defined(LINUX)
-m_lastRxSampleProcessed(0),
+m_lastReceivedSampleCount(0),
 m_txSampleCounter(0),
 m_txPacketLen(0),
 m_rxFd(-1),
 m_txFd(-1),
 #else
 m_txBuffer(TX_RINGBUFFER_SIZE),
-m_rssiBuffer(RX_RINGBUFFER_SIZE),
 #endif
-
+m_rssiBuffer(RX_RINGBUFFER_SIZE),
 #if defined(USE_DCBLOCKER)
 m_dcFilter(),
 m_dcState(),
@@ -346,12 +344,6 @@ void CIO::start()
 }
 
 #if !defined(LINUX)
-void CIO::getRxSampleAndRssiInt(TSample& sample, uint16_t& rssi)
-{
-  m_rxBuffer.get(sample);
-  m_rssiBuffer.get(rssi);
-}
-
 void CIO::putTxSampleInt(TSample sample)
 {
   m_txBuffer.put(sample);
@@ -415,8 +407,9 @@ void CIO::process()
 
     for (uint16_t i = 0U; i < RX_BLOCK_SIZE; i++) {
       TSample sample;
-      getRxSampleAndRssiInt(sample, rssi[i]);
+      m_rxBuffer.get(sample);
       control[i] = sample.control;
+      m_rssiBuffer.get(rssi[i]);
 
       // Detect ADC overflow
       if (m_detect && (sample.sample == 0U || sample.sample == 4095U))

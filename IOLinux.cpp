@@ -109,11 +109,22 @@ void CIO::receive()
   }
 
   while (pos + 3 < packetLen) {
-    m_rxBuffer.put(TRxSample {
-      .count = sampleCount,
+    TSample sample = {
       .sample = ((uint16_t)packet[pos  ]) | (((uint16_t)packet[pos+1]) << 8U),
-      .rssi   = ((uint16_t)packet[pos+2]) | (((uint16_t)packet[pos+3]) << 8U),
-    });
+      .control = MARK_NONE
+    };
+
+    // Add control flag if available for this sample counter value
+    uint64_t c = m_controlBuffer[sampleCount & (CONTROL_BUFFER_SIZE - 1)];
+    if ((c & ~0xFFULL) == (sampleCount & ~0xFFULL)) {
+      sample.control = c & 0xFFU;
+    }
+
+    if (m_rxBuffer.put(sample)) {
+      m_lastReceivedSampleCount = sampleCount;
+    }
+    m_rssiBuffer.put(((uint16_t)packet[pos+2]) | (((uint16_t)packet[pos+3]) << 8U));
+
     pos += 4;
     sampleCount++;
   }
@@ -137,26 +148,6 @@ uint16_t CIO::getRxAvailable() const
   return m_rxBuffer.getData();
 }
 
-void CIO::getRxSampleAndRssiInt(TSample& sample, uint16_t& rssi)
-{
-  TRxSample bufferSample = { 0U, 0U, 0U };
-  if (m_rxBuffer.get(bufferSample)) {
-
-    sample.sample = bufferSample.sample;
-    rssi = bufferSample.rssi;
-
-    // Get control flags from a separate buffer based on sample count
-    uint64_t c = m_controlBuffer[bufferSample.count & (CONTROL_BUFFER_SIZE - 1)];
-    if ((c & ~0xFFULL) == (bufferSample.count & ~0xFFULL)) {
-      sample.control = c & 0xFFU;
-    } else {
-      sample.control = MARK_NONE;
-    }
-
-    m_lastRxSampleProcessed = bufferSample.count;
-  }
-}
-
 
 // How far ahead from latest processed RX sample
 // the first TX sample after a pause should be timed.
@@ -164,11 +155,12 @@ static const uint64_t TX_BEGIN_AHEAD = 360UL; // 15ms
 
 void CIO::putTxSampleInt(TSample sample)
 {
-  if (m_txSampleCounter - m_lastRxSampleProcessed >= 1ULL << 63U) {
+  uint64_t lastRxSampleProcessed = m_lastReceivedSampleCount - m_rxBuffer.getData();
+  if (m_txSampleCounter - lastRxSampleProcessed >= 1ULL << 63U) {
     // TX sample counter is behind RX sample counter, i.e. in the past.
     // This may happen for the first TX sample after a pause in TX.
     // Forward TX counter txBeginAhead samples to the future.
-    m_txSampleCounter = m_lastRxSampleProcessed + TX_BEGIN_AHEAD;
+    m_txSampleCounter = lastRxSampleProcessed + TX_BEGIN_AHEAD;
   }
 
   if (m_txPacketLen == 0) {
@@ -200,16 +192,18 @@ uint16_t CIO::getSpace() const
 {
   // Simulate given TX buffer size by limiting how far ahead
   // from latest processed RX sample we let TX samples to be produced.
-  uint64_t ahead = m_txSampleCounter - m_lastRxSampleProcessed;
+  uint64_t lastRxSampleProcessed = m_lastReceivedSampleCount - m_rxBuffer.getData();
+  uint64_t ahead = m_txSampleCounter - lastRxSampleProcessed;
   if (ahead >= 1ULL << 63U) {
-    // Wrapped around, meaning m_txSampleCounter is behind m_lastRxSampleProcessed.
-    // putTxSampleInt will move it to m_lastRxSampleProcessed + TX_BEGIN_AHEAD.
+    // Wrapped around, meaning m_txSampleCounter is behind lastRxSampleProcessed.
+    // putTxSampleInt will move it to lastRxSampleProcessed + TX_BEGIN_AHEAD.
     ahead = TX_BEGIN_AHEAD;
   }
 
-  uint16_t space = (ahead >= (uint64_t)TX_RINGBUFFER_SIZE)
+  uint64_t simulatedBufferSize = TX_RINGBUFFER_SIZE;
+  uint16_t space = (ahead >= simulatedBufferSize)
     ? 0
-    : TX_RINGBUFFER_SIZE - ahead;
+    : simulatedBufferSize - ahead;
 
   uint16_t maxForPacket = (MAX_TX_PACKET_SIZE - m_txPacketLen) / 4U;
   return space < maxForPacket ? space : maxForPacket;
@@ -222,7 +216,8 @@ bool CIO::hasTXOverflow()
 
 bool CIO::hasEmptyTXBufferInt()
 {
-  return m_txSampleCounter - m_lastRxSampleProcessed >= 1ULL << 63U;
+  uint64_t lastRxSampleProcessed = m_lastReceivedSampleCount - m_rxBuffer.getData();
+  return m_txSampleCounter - lastRxSampleProcessed >= 1ULL << 63U;
 }
 
 

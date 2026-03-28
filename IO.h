@@ -28,17 +28,6 @@ struct TSample {
   volatile uint8_t control;
 };
 
-#if defined(LINUX)
-struct TRxSample {
-  // Store sample counter values in RX buffer
-  uint64_t count;
-  uint16_t sample;
-  uint16_t rssi;
-  // Control flags are handled in a different way
-  // and not stored in the same RX buffer.
-};
-#endif
-
 class CIO {
 public:
   CIO();
@@ -85,18 +74,17 @@ public:
 private:
   bool                  m_started;
 
+  CRingBuffer<TSample>  m_rxBuffer;
 #if defined(LINUX)
-  CRingBuffer<TRxSample> m_rxBuffer;
-  uint64_t               m_lastRxSampleProcessed;
+  uint64_t               m_lastReceivedSampleCount;
   uint64_t               m_txSampleCounter;
   ssize_t                m_txPacketLen;
   int                    m_rxFd;
   int                    m_txFd;
 #else
-  CRingBuffer<TSample>  m_rxBuffer;
   CRingBuffer<TSample>  m_txBuffer;
-  CRingBuffer<uint16_t> m_rssiBuffer;
 #endif
+  CRingBuffer<uint16_t> m_rssiBuffer;
 
 #if defined(USE_DCBLOCKER)
   arm_biquad_casd_df1_inst_q31 m_dcFilter;
@@ -198,7 +186,6 @@ private:
   
   void delayInt(unsigned int dly);
 
-  void getRxSampleAndRssiInt(TSample& sample, uint16_t& rssi);
   void putTxSampleInt(TSample sample);
   bool hasEmptyTXBufferInt();
 };
